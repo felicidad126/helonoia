@@ -128,8 +128,8 @@ Buka **Website → Add site → Create single site**, lalu isi:
 
 | Isian | Nilai |
 |---|---|
-| Domain name | `helonoia.net` dan `www.helonoia.net` (satu domain per baris) |
-| Website Path | `/www/wwwroot/helonoia.net` (biarkan sesuai isian otomatis) |
+| Domain name | `helonoia.com` dan `www.helonoia.com` (satu domain per baris) |
+| Website Path | `/www/wwwroot/helonoia.com` (biarkan sesuai isian otomatis) |
 | FTP | Tidak dibuat |
 | Database | Tidak dibuat |
 | PHP version | Pilih opsi statis (biasanya tertulis **Static**), karena halaman ini tidak memakai PHP |
@@ -140,7 +140,7 @@ Klik **Submit**.
 
 Pilih salah satu cara.
 
-**Lewat panel:** buka menu **Files**, masuk ke `/www/wwwroot/helonoia.net`, hapus `index.html` bawaan aaPanel, lalu **Upload** `index.html`, `favicon.svg`, dan `logo.png` dari folder `HTML/` repo ini. Ketiganya diletakkan **langsung** di folder itu, bukan di subfolder `HTML`.
+**Lewat panel:** buka menu **Files**, masuk ke `/www/wwwroot/helonoia.com`, hapus `index.html` bawaan aaPanel, lalu **Upload** `index.html`, `favicon.svg`, dan `logo.png` dari folder `HTML/` repo ini. Ketiganya diletakkan **langsung** di folder itu, bukan di subfolder `HTML`.
 
 **Lewat SSH (sebagai root):**
 
@@ -149,21 +149,21 @@ git clone --depth 1 https://github.com/felicidad126/helonoia.git ~/helonoia-src
 ```
 
 ```bash
-cp -r ~/helonoia-src/HTML/. /www/wwwroot/helonoia.net/
+cp -r ~/helonoia-src/HTML/. /www/wwwroot/helonoia.com/
 ```
 
 ```bash
-chown -R www:www /www/wwwroot/helonoia.net
+chown -R www:www /www/wwwroot/helonoia.com
 ```
 
 Perintah `git clone` mengambil branch `main`. Pastikan perubahan terbaru sudah di-merge ke `main`.
 
-Cek: buka `http://helonoia.net`. Halaman Helonoia harus muncul (masih tanpa gembok).
+Cek: buka `http://helonoia.com`. Halaman Helonoia harus muncul (masih tanpa gembok).
 
 ### A6. Pasang HTTPS (gratis, Let's Encrypt)
 
-1. Di **Website**, klik nama situs `helonoia.net` (atau tombol **Conf**), lalu buka bagian **SSL**.
-2. Pilih **Let's Encrypt**, metode **File verification**, centang kedua domain (`helonoia.net` dan `www.helonoia.net`), lalu **Apply**.
+1. Di **Website**, klik nama situs `helonoia.com` (atau tombol **Conf**), lalu buka bagian **SSL**.
+2. Pilih **Let's Encrypt**, metode **File verification**, centang kedua domain (`helonoia.com` dan `www.helonoia.com`), lalu **Apply**.
 3. Setelah sertifikat terpasang, nyalakan **Force HTTPS** supaya `http://` otomatis pindah ke `https://`.
 
 Sertifikat diperpanjang otomatis oleh aaPanel.
@@ -274,14 +274,14 @@ Harus terlihat `index.html`, `favicon.svg`, dan `logo.png`, **langsung** di dala
 
 ### B3. Atur Nginx untuk domain
 
-Buat file konfigurasi. Kalau domainmu bukan helonoia.net, **ganti dulu** baris `server_name` sebelum menempel perintah ini:
+Buat file konfigurasi. Kalau domainmu bukan helonoia.com, **ganti dulu** baris `server_name` sebelum menempel perintah ini:
 
 ```bash
 sudo tee /etc/nginx/sites-available/helonoia > /dev/null <<'EOF'
 server {
     listen 80;
     listen [::]:80;
-    server_name helonoia.net www.helonoia.net;
+    server_name helonoia.com www.helonoia.com;
 
     root /var/www/helonoia;
     index index.html;
