@@ -377,6 +377,8 @@ sudo certbot renew --dry-run
 
 Kalau `HTML/index.html` di repo berubah:
 
+Kalau [update otomatis](#update-otomatis-cicd) sudah disiapkan, tidak perlu apa-apa: cukup push ke `main`. Cara manualnya:
+
 **aaPanel (sebagai root):**
 
 ```bash
@@ -402,6 +404,71 @@ sudo cp -r ~/helonoia-src/HTML/. /var/www/helonoia/
 **cPanel:** unggah ulang ketiga file.
 
 Web server tidak perlu di-restart. Kalau browser masih menampilkan versi lama, tekan Ctrl+F5 (atau Cmd+Shift+R di Mac).
+
+---
+
+## Update otomatis (CI/CD)
+
+Repo ini punya GitHub Actions ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)). Setiap ada push ke `main` yang mengubah folder `HTML/`, GitHub mengirim isi `HTML/` ke server lewat SSH (rsync). Server tidak perlu clone repo, jadi ini tetap jalan walaupun repo-nya private.
+
+Sebelum disiapkan, workflow tetap berjalan tapi melewati langkah deploy dengan peringatan "deploy dilewati". Siapkan sekali saja:
+
+### 1. Buat kunci SSH khusus deploy (di server, sebagai root)
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/github-deploy -N "" -C github-actions-helonoia
+```
+
+```bash
+cat ~/.ssh/github-deploy.pub >> ~/.ssh/authorized_keys
+```
+
+```bash
+cat ~/.ssh/github-deploy
+```
+
+Salin seluruh isi yang tampil, mulai dari `-----BEGIN OPENSSH PRIVATE KEY-----` sampai `-----END OPENSSH PRIVATE KEY-----`. Kunci ini hanya untuk GitHub; jangan dipakai di tempat lain.
+
+Pastikan `rsync` terpasang di server (biasanya sudah ada):
+
+```bash
+apt install -y rsync
+```
+
+### 2. Isi secrets di GitHub
+
+Buka repo di GitHub: **Settings → Secrets and variables → Actions → New repository secret**.
+
+| Secret | Isi | Wajib? |
+|---|---|---|
+| `DEPLOY_HOST` | IP server (contoh `203.0.113.10`) | Ya |
+| `DEPLOY_SSH_KEY` | Private key dari langkah 1 | Ya |
+| `DEPLOY_PORT` | Port SSH, kalau bukan `22` | Tidak |
+| `DEPLOY_USER` | User SSH, kalau bukan `root` | Tidak |
+
+Tujuannya sudah diatur untuk aaPanel (`/www/wwwroot/helonoia.net`, pemilik `www:www`). Untuk **Jalur B (Nginx manual)**, buka tab **Variables** di halaman yang sama dan isi:
+
+| Variable | Isi |
+|---|---|
+| `DEPLOY_PATH` | `/var/www/helonoia` |
+| `DEPLOY_OWNER` | `www-data:www-data` |
+
+Kalau `DEPLOY_USER` bukan root, user itu tidak bisa mengganti pemilik file. Isi `DEPLOY_OWNER` dengan `none`, dan pastikan user itu bisa menulis ke folder situs.
+
+### 3. Uji
+
+Buka tab **Actions → Deploy helonoia.com → Run workflow**. Kalau hijau, buka situsnya dan tekan Ctrl+F5. Mulai sekarang, setiap push ke `main` yang mengubah `HTML/` langsung tayang dalam kurang dari satu menit.
+
+Kalau gagal:
+
+| Pesan di log | Artinya |
+|---|---|
+| `Permission denied (publickey)` | Isi `DEPLOY_SSH_KEY` tidak lengkap, atau public key belum masuk `authorized_keys` |
+| `Connection timed out` | Port SSH ditutup firewall (aaPanel **Security** atau firewall penyedia VPS), atau `DEPLOY_PORT` salah |
+| `rsync: command not found` | `rsync` belum terpasang di server |
+| `chown ... failed: Operation not permitted` | User bukan root; isi variable `DEPLOY_OWNER` dengan `none` |
+
+Jalur C (cPanel) biasanya tidak memberi akses SSH. Di sana tetap unggah manual.
 
 ---
 

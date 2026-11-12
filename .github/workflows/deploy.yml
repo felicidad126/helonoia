@@ -1,0 +1,55 @@
+# Kirim isi folder HTML/ ke server setiap ada push ke main.
+# Cara menyiapkannya ada di DEPLOY-HELONOIA.md, bagian "Update otomatis (CI/CD)".
+name: Deploy helonoia.com
+
+on:
+  push:
+    branches: [main]
+    paths: ["HTML/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HOST: ${{ secrets.DEPLOY_HOST }}
+      PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+      SSH_USER: ${{ secrets.DEPLOY_USER || 'root' }}
+      KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DIR: ${{ vars.DEPLOY_PATH || '/www/wwwroot/helonoia.net' }}
+      OWNER: ${{ vars.DEPLOY_OWNER || 'www:www' }}
+    steps:
+      - name: Cek secrets
+        id: cek
+        run: |
+          if [ -z "$HOST" ] || [ -z "$KEY" ]; then
+            echo "::warning::Secret DEPLOY_HOST atau DEPLOY_SSH_KEY belum diisi, deploy dilewati. Lihat DEPLOY-HELONOIA.md."
+            echo "siap=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "siap=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.cek.outputs.siap == 'true'
+
+      - name: Siapkan SSH
+        if: steps.cek.outputs.siap == 'true'
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          ssh-keyscan -p "$PORT" -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Kirim HTML/ ke server
+        if: steps.cek.outputs.siap == 'true'
+        # Tanpa --delete: aaPanel menyimpan .user.ini dan .well-known (SSL) di folder situs.
+        run: |
+          CHOWN=""; [ "$OWNER" != "none" ] && CHOWN="--chown=$OWNER"
+          rsync -rltvz $CHOWN \
+            -e "ssh -i ~/.ssh/deploy -p $PORT -o BatchMode=yes" \
+            HTML/ "$SSH_USER@$HOST:$DIR/"
