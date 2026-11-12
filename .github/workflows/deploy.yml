@@ -21,7 +21,7 @@ jobs:
       PORT: ${{ secrets.DEPLOY_PORT || '22' }}
       SSH_USER: ${{ secrets.DEPLOY_USER || 'root' }}
       KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-      DIR: ${{ vars.DEPLOY_PATH || '/www/wwwroot/helonoia.net' }}
+      DIR: ${{ vars.DEPLOY_PATH || '/www/wwwroot/helonoia.com' }}
       OWNER: ${{ vars.DEPLOY_OWNER || 'www:www' }}
     steps:
       - name: Cek secrets
