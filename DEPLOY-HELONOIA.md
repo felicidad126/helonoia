@@ -405,15 +405,9 @@ Web server tidak perlu di-restart. Kalau browser masih menampilkan versi lama, t
 
 ---
 
-## (Opsional) Gambar pratinjau saat link dibagikan
+## Gambar pratinjau saat link dibagikan
 
-Saat link dibagikan di WhatsApp atau media sosial, gambar pratinjaunya diambil dari baris `og:image` di `HTML/index.html`. Sekarang baris itu mengarah ke `https://invitation.helonoia.net/helonoia/helonoia_logo.png`, dan itu sudah berfungsi.
-
-Kalau ingin memakai domain sendiri, ubah baris itu **di repo** (supaya tidak tertimpa saat update) menjadi:
-
-```html
-<meta property="og:image" content="https://helonoia.net/logo.png">
-```
+Baris `og:image` di `HTML/index.html` mengarah ke `https://helonoia.com/logo.png`. Gambar ini hanya muncul kalau `logo.png` di server berisi gambar sungguhan. Cek ukurannya di menu **Files**: harus sekitar 60 KB, bukan 0 B.
 
 ---
 
@@ -431,4 +425,4 @@ Kalau ingin memakai domain sendiri, ubah baris itu **di repo** (supaya tidak ter
 | `404 Not Found` di halaman utama | File tersalin ke subfolder `HTML/`, bukan langsung ke folder situs. Pindahkan isinya satu folder ke atas. |
 | Sertifikat Let's Encrypt gagal | DNS belum mengarah ke server (cek `nslookup helonoia.net`), port 80 tertutup di firewall penyedia VPS, atau proxy Cloudflare masih menyala. Set ke *DNS only*, lalu ulangi. |
 | `Too many redirects` | Mode SSL Cloudflare masih *Flexible*. Ubah ke **Full (strict)**. |
-| Ikon tab tidak muncul | `favicon.svg` belum ikut diunggah. Browser juga sering menyimpan ikon lama, jadi coba di jendela privat. |
+| Ikon tab tidak muncul | `favicon.svg` belum ikut diunggah, atau ukurannya 0 B (unduhan gagal, unggah ulang). Browser juga sering menyimpan ikon lama, jadi coba di jendela privat. |
