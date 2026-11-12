@@ -34,7 +34,7 @@ jobs:
             echo "siap=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: steps.cek.outputs.siap == 'true'
 
       - name: Siapkan SSH
@@ -43,7 +43,12 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s\n' "$KEY" > ~/.ssh/deploy
           chmod 600 ~/.ssh/deploy
-          ssh-keyscan -p "$PORT" -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          if ! ssh-keyscan -T 15 -p "$PORT" -H "$HOST" > /tmp/hostkeys 2> /tmp/keyscan.err || [ ! -s /tmp/hostkeys ]; then
+            cat /tmp/keyscan.err
+            echo "::error title=Server tidak bisa dihubungi::GitHub tidak bisa membuka SSH ke DEPLOY_HOST di port DEPLOY_PORT (default 22). Cek: (1) DEPLOY_HOST berisi IP server, bukan domain yang lewat proxy Cloudflare; (2) DEPLOY_PORT sama dengan port SSH server; (3) port itu terbuka di firewall aaPanel (Security) dan firewall penyedia VPS untuk semua IP."
+            exit 1
+          fi
+          cat /tmp/hostkeys >> ~/.ssh/known_hosts
 
       - name: Kirim HTML/ ke server
         if: steps.cek.outputs.siap == 'true'
