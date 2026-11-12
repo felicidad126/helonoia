@@ -145,7 +145,7 @@ Pilih salah satu cara.
 **Lewat SSH (sebagai root):**
 
 ```bash
-git clone --depth 1 https://github.com/felicidad126/felicidad126.github.io.git ~/helonoia-src
+git clone --depth 1 https://github.com/felicidad126/helonoia.git ~/helonoia-src
 ```
 
 ```bash
@@ -227,7 +227,7 @@ sudo apt install -y git
 ```
 
 ```bash
-git clone --depth 1 https://github.com/felicidad126/felicidad126.github.io.git ~/helonoia-src
+git clone --depth 1 https://github.com/felicidad126/helonoia.git ~/helonoia-src
 ```
 
 ```bash
