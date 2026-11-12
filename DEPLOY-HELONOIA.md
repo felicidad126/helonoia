@@ -21,7 +21,7 @@ Tidak butuh PHP, database, Node.js, atau proses build. Huruf (Fredoka dan Plus J
 Contoh di panduan ini (ganti dengan milikmu bila berbeda):
 
 - **Server:** VPS Ubuntu 22.04 (versi yang disarankan aaPanel), bisa SSH dengan akses `sudo`
-- **Domain:** `helonoia.net` dan `www.helonoia.net`
+- **Domain:** `helonoia.com` dan `www.helonoia.com`
 
 > ⚠️ Pilih **satu** jalur per server. Jangan memasang Nginx dari Jalur B di server yang akan dipasangi aaPanel, karena aaPanel memasang dan mengatur Nginx-nya sendiri.
 
@@ -30,7 +30,7 @@ Contoh di panduan ini (ganti dengan milikmu bila berbeda):
 ## Langkah 0: Siapkan (semua jalur)
 
 - **IP publik server**, misalnya `203.0.113.10`. Di panduan ini ditulis `IP-SERVER`.
-- **Akses ke pengaturan DNS domain**, yaitu tempat domain helonoia.net dikelola (kemungkinan Cloudflare, karena invitation.helonoia.net ada di Cloudflare Pages).
+- **Akses ke pengaturan DNS domain**, yaitu tempat domain helonoia.com dikelola (kemungkinan Cloudflare, karena invitation.helonoia.com ada di Cloudflare Pages).
 - **Untuk aaPanel:** sebaiknya server baru yang masih kosong, minimal 1 core CPU dan 512 MB RAM (disarankan 1 GB). Kalau akan dipakai untuk banyak website, ambil RAM lebih besar.
 
 ---
@@ -41,10 +41,10 @@ Di pengaturan DNS domain, buat (atau ubah) dua record ini:
 
 | Type | Name | Content / Target |
 |---|---|---|
-| `A` | `@` (artinya `helonoia.net`) | `IP-SERVER` |
+| `A` | `@` (artinya `helonoia.com`) | `IP-SERVER` |
 | `A` | `www` | `IP-SERVER` |
 
-> ⚠️ **Jangan ubah atau hapus record `invitation`.** Record itu yang menjalankan katalog undangan di invitation.helonoia.net.
+> ⚠️ **Jangan ubah atau hapus record `invitation`.** Record itu yang menjalankan katalog undangan di invitation.helonoia.com.
 
 Kalau DNS-nya di **Cloudflare**, set *Proxy status* kedua record di atas ke **DNS only** (awan abu-abu) dulu. Proxy bisa dinyalakan lagi setelah HTTPS berhasil dipasang.
 
@@ -53,7 +53,7 @@ Website lain yang akan ditaruh di server yang sama diarahkan dengan cara yang sa
 Cek dari komputermu. Hasilnya harus IP server (perubahan DNS bisa butuh beberapa menit sampai beberapa jam):
 
 ```bash
-nslookup helonoia.net
+nslookup helonoia.com
 ```
 
 ---
@@ -326,7 +326,7 @@ Terapkan:
 sudo systemctl reload nginx
 ```
 
-Cek: buka `http://helonoia.net`. Halaman Helonoia harus muncul (masih tanpa gembok, itu dipasang di langkah berikutnya).
+Cek: buka `http://helonoia.com`. Halaman Helonoia harus muncul (masih tanpa gembok, itu dipasang di langkah berikutnya).
 
 Untuk website lain di server yang sama, buat satu file konfigurasi lagi per domain dengan `server_name` dan `root` miliknya.
 
@@ -337,7 +337,7 @@ sudo apt install -y certbot python3-certbot-nginx
 ```
 
 ```bash
-sudo certbot --nginx -d helonoia.net -d www.helonoia.net
+sudo certbot --nginx -d helonoia.com -d www.helonoia.com
 ```
 
 Certbot akan menanyakan email dan persetujuan syarat layanan. Setelah itu ia memasang sertifikat dan mengubah konfigurasi Nginx sendiri. Kalau ditanya soal *redirect*, pilih supaya `http://` dialihkan ke `https://`.
@@ -364,12 +364,12 @@ sudo certbot renew --dry-run
 
 ## Periksa hasilnya (semua jalur)
 
-- [ ] `https://helonoia.net` membuka halaman Helonoia, dengan gembok di address bar
-- [ ] `http://helonoia.net` dan `https://www.helonoia.net` ikut pindah ke halaman yang sama
+- [ ] `https://helonoia.com` membuka halaman Helonoia, dengan gembok di address bar
+- [ ] `http://helonoia.com` dan `https://www.helonoia.com` ikut pindah ke halaman yang sama
 - [ ] Ikon tab berupa monster ungu
 - [ ] Maskot bergerak dan matanya mengikuti kursor
 - [ ] Tombol "Sapa balik" membuat maskot melambai dan menjawab
-- [ ] https://invitation.helonoia.net tetap membuka katalog undangan
+- [ ] https://invitation.helonoia.com tetap membuka katalog undangan
 
 ---
 
@@ -386,7 +386,7 @@ git -C ~/helonoia-src pull
 ```
 
 ```bash
-cp -r ~/helonoia-src/HTML/. /www/wwwroot/helonoia.net/
+cp -r ~/helonoia-src/HTML/. /www/wwwroot/helonoia.com/
 ```
 
 Atau unggah ulang ketiga file lewat menu **Files**.
@@ -446,7 +446,7 @@ Buka repo di GitHub: **Settings → Secrets and variables → Actions → New re
 | `DEPLOY_PORT` | Port SSH, kalau bukan `22` | Tidak |
 | `DEPLOY_USER` | User SSH, kalau bukan `root` | Tidak |
 
-Tujuannya sudah diatur untuk aaPanel (`/www/wwwroot/helonoia.net`, pemilik `www:www`). Untuk **Jalur B (Nginx manual)**, buka tab **Variables** di halaman yang sama dan isi:
+Tujuannya sudah diatur untuk aaPanel (`/www/wwwroot/helonoia.com`, pemilik `www:www`). Untuk **Jalur B (Nginx manual)**, buka tab **Variables** di halaman yang sama dan isi:
 
 | Variable | Isi |
 |---|---|
@@ -485,11 +485,11 @@ Baris `og:image` di `HTML/index.html` mengarah ke `https://helonoia.com/logo.png
 | Installer aaPanel berhenti dengan `Web service is already installed` | Server sudah punya Nginx, Apache, PHP, atau MySQL dari luar aaPanel (misalnya dari Jalur B). Pakai server baru, **atau** kalau server itu belum menjalankan situs apa pun, hapus Nginx lama dengan `sudo apt purge -y nginx nginx-common` lalu jalankan installer lagi. |
 | Dasbor aaPanel tidak bisa dibuka | Port panel belum dibuka di firewall penyedia VPS (lihat A2), atau alamatnya kurang bagian `/xxxxxxxx` di ujungnya. Jalankan `bt default` untuk melihat alamat lengkapnya. |
 | Lupa password aaPanel | Jalankan `bt 5` di server (sebagai root). |
-| Situs masih menampilkan halaman bawaan aaPanel | `index.html` bawaan belum diganti, atau file terunggah ke subfolder. Cek isi `/www/wwwroot/helonoia.net` di menu **Files**. |
+| Situs masih menampilkan halaman bawaan aaPanel | `index.html` bawaan belum diganti, atau file terunggah ke subfolder. Cek isi `/www/wwwroot/helonoia.com` di menu **Files**. |
 | `nginx -t` gagal dengan pesan `Address family not supported` (Jalur B) | Server tidak mendukung IPv6. Hapus baris `listen [::]:80;` di `/etc/nginx/sites-available/helonoia`, lalu `sudo nginx -t` lagi. |
 | Domain masih menampilkan "Welcome to nginx!" (Jalur B) | Situs bawaan masih aktif atau `server_name` salah ketik. Cek isi `/etc/nginx/sites-enabled/`, lalu `sudo systemctl reload nginx`. |
-| `403 Forbidden` | File tidak terbaca atau `index.html` tidak ada. Jalur B: `sudo chmod -R a+rX /var/www/helonoia`. aaPanel: `chown -R www:www /www/wwwroot/helonoia.net`. |
+| `403 Forbidden` | File tidak terbaca atau `index.html` tidak ada. Jalur B: `sudo chmod -R a+rX /var/www/helonoia`. aaPanel: `chown -R www:www /www/wwwroot/helonoia.com`. |
 | `404 Not Found` di halaman utama | File tersalin ke subfolder `HTML/`, bukan langsung ke folder situs. Pindahkan isinya satu folder ke atas. |
-| Sertifikat Let's Encrypt gagal | DNS belum mengarah ke server (cek `nslookup helonoia.net`), port 80 tertutup di firewall penyedia VPS, atau proxy Cloudflare masih menyala. Set ke *DNS only*, lalu ulangi. |
+| Sertifikat Let's Encrypt gagal | DNS belum mengarah ke server (cek `nslookup helonoia.com`), port 80 tertutup di firewall penyedia VPS, atau proxy Cloudflare masih menyala. Set ke *DNS only*, lalu ulangi. |
 | `Too many redirects` | Mode SSL Cloudflare masih *Flexible*. Ubah ke **Full (strict)**. |
 | Ikon tab tidak muncul | `favicon.svg` belum ikut diunggah, atau ukurannya 0 B (unduhan gagal, unggah ulang). Browser juga sering menyimpan ikon lama, jadi coba di jendela privat. |
