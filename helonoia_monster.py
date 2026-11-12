@@ -11,16 +11,21 @@ Hasil:
     helonoia_monster.svg      -> latar transparan (dipakai di Canva)
     helonoia_monster_bg.svg   -> dengan latar gelap #120B1E (untuk preview)
     helonoia_monster.png      -> PNG transparan 1200 px (hanya jika `cairosvg` terpasang)
+    helonoia_logo.svg         -> logo lengkap 500 x 500 (monster + tulisan) dengan latar gelap
+    helonoia_logo_transparent.svg -> logo lengkap dengan latar transparan
 
 Semua koordinat memakai kanvas kerja 512 x 512. Bagian yang keluar dari kanvas
 (garis lambaian di kiri) tetap terlihat karena viewBox diatur di VIEWBOX.
 
-Susunan logo di Canva (Page 6, kanvas 500 x 500 px):
-    Monster  : file SVG ini, W 392.4 px, X 28.3, Y 18.3 (layer paling belakang)
-    Tulisan  : "HELONOIA", font Syne Bold 46, letter spacing 60, rata tengah,
-               kotak teks W 460, X 20, Y 367
-               "HELO" = #F4EFFF, "NOIA" = #B26BFF
+Susunan logo (kanvas 500 x 500 px) – dipakai oleh build_logo() dan di Canva (Page 6):
+    Monster  : W 392.4 px, X 28.3, Y 18.3 (layer paling belakang)
+    Tulisan  : "HELONOIA", font Syne Bold 46, letter spacing 60 (= 0.06 em), rata tengah,
+               kotak teks W 460, X 20, Y 367 (garis dasar huruf di y = 414)
+               "HELO" = #F4EFFF (dari "halo", sapaan), "NOIA" = #B26BFF (dari "paranoia")
     Latar    : #120B1E
+
+Di file logo, tulisan sudah diubah menjadi path (outline Syne Bold, lisensi SIL OFL 1.1),
+jadi tampil benar tanpa font terpasang.
 """
 
 import math
@@ -265,6 +270,54 @@ FACE_CURIGA = (EYE_WHITES + pupils(20, 16, 12) + LIDS + BAGS + BROWS + FANG + SM
 
 
 # ---------------------------------------------------------------------------
+# Tulisan "HELONOIA" – outline Syne Bold (SIL OFL 1.1), satuan font 1000/em.
+# Disimpan sebagai path supaya logo tampil benar tanpa font terpasang.
+# ---------------------------------------------------------------------------
+GLYPHS = {
+    "H": (895, "M194 380H707V269H194ZM685 647H818V0H685ZM77 647H210V0H77Z"),
+    "E": (769, "M210 270V111H709V0H77V647H708V536H210V375H618V270Z"),
+    "L": (687, "M210 647V111H640V0H77V647Z"),
+    "O": (924, "M462 -13Q333 -13 242 28Q150 68 102 143Q53 218 53 323Q53 429 102 504Q150 579 242 620Q333 660 462 660Q592 660 683 620Q774 579 822 504Q871 429 871 323Q871 218 822 143Q774 68 683 28Q592 -13 462 -13ZM462 102Q542 102 602 126Q663 150 698 199Q732 248 732 323Q732 398 698 447Q663 496 602 520Q542 545 462 545Q383 545 321 520Q259 496 224 447Q189 398 189 323Q189 248 224 199Q259 150 321 126Q383 102 462 102Z"),
+    "N": (901, "M733 132 691 115V647H824V0H691L168 511L210 528V0H77V647H210Z"),
+    "I": (324, "M96 647H229V0H96Z"),
+    "A": (789, "M178 141V252H606V141ZM17 0 321 647H465L772 0H627L361 583H425L161 0Z"),
+}
+WORD_SIZE = 46          # ukuran huruf (px)
+WORD_TRACK = 0.06       # letter spacing Canva 60 = 0.06 em
+WORD_BASELINE = 414     # garis dasar huruf (kotak teks Canva Y 367, line-height 1.4)
+MONSTER_BOX = (28.3, 18.3, 392.4)   # X, Y, W monster di kanvas 500 x 500
+
+
+def wordmark():
+    """Tulisan HELONOIA sebagai path, rata tengah di x = 250."""
+    k = WORD_SIZE / 1000
+    gap = WORD_TRACK * WORD_SIZE
+    total = sum(GLYPHS[ch][0] for ch in "HELONOIA") * k + gap * 7
+    x = 250 - total / 2
+    out = ""
+    for i, ch in enumerate("HELONOIA"):
+        adv, d = GLYPHS[ch]
+        col = WHITE if i < 4 else VIO
+        out += (f'<path transform="translate({x:.2f} {WORD_BASELINE}) scale({k} {-k})" '
+                f'd="{d}" fill="{col}"/>')
+        x += adv * k + gap
+    return out
+
+
+def build_logo():
+    x, y, w = MONSTER_BOX
+    monster = (f'<svg x="{x}" y="{y}" width="{w}" height="{w}" viewBox="{VIEWBOX}">'
+               f'{build_monster()}</svg>')
+    return monster + wordmark()
+
+
+def logo_svg(bg=False):
+    b = f'<rect width="500" height="500" fill="{BG}"/>' if bg else ""
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" '
+            f'width="1000" height="1000">{b}{build_logo()}</svg>')
+
+
+# ---------------------------------------------------------------------------
 # Susun & simpan
 # ---------------------------------------------------------------------------
 def build_monster():
@@ -283,11 +336,18 @@ if __name__ == "__main__":
         f.write(svg(inner))
     with open("helonoia_monster_bg.svg", "w") as f:
         f.write(svg(inner, bg=True))
-    print("Tersimpan: helonoia_monster.svg, helonoia_monster_bg.svg")
+    with open("helonoia_logo.svg", "w") as f:
+        f.write(logo_svg(bg=True))
+    with open("helonoia_logo_transparent.svg", "w") as f:
+        f.write(logo_svg())
+    print("Tersimpan: helonoia_monster.svg, helonoia_monster_bg.svg, "
+          "helonoia_logo.svg, helonoia_logo_transparent.svg")
     try:
         import cairosvg  # opsional: pip install cairosvg
         cairosvg.svg2png(url="helonoia_monster.svg", write_to="helonoia_monster.png",
                          output_width=1200, output_height=1200)
-        print("Tersimpan: helonoia_monster.png")
+        cairosvg.svg2png(url="helonoia_logo.svg", write_to="helonoia_logo.png",
+                         output_width=1000, output_height=1000)
+        print("Tersimpan: helonoia_monster.png, helonoia_logo.png")
     except ImportError:
         print("(PNG dilewati – pasang `cairosvg` jika ingin ekspor PNG)")
