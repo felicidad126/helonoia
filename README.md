@@ -7,7 +7,7 @@ Halaman perkenalan brand **Helonoia** beserta aset mereknya: maskot, logo, dan i
 | [`HTML/`](HTML/) | Halaman brand (`index.html`, `favicon.svg`, `logo.png`). Berdiri sendiri, tinggal disalin ke server. |
 | [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md) | Panduan deploy ke server sendiri (aaPanel, Nginx manual, cPanel). |
 | [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) | Deploy otomatis `HTML/` ke server setiap push ke `main`. Cara menyiapkannya: [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md#update-otomatis-cicd). |
-| [`helonoia/`](helonoia/) | Generator maskot dan logo (`helonoia_monster.py`) beserta hasilnya. |
+| [`helonoia/`](helonoia/) | Generator maskot dan logo (`helonoia_monster.py`) beserta hasilnya, dan generator gambar promosi (`generate.py`). |
 | [`helonoia/ikon/`](helonoia/ikon/) | Ikon untuk bagian "Empat kebiasaan kami". |
 
 ## Halaman brand
@@ -37,6 +37,34 @@ cd helonoia && python3 helonoia_monster.py
 | `helonoia_monster_bg.svg` / `.png` | Maskot, latar gelap `#120B1E` |
 | `helonoia_logo.svg` / `.png` | Logo lengkap (maskot + tulisan), latar gelap |
 | `helonoia_logo_transparent.svg` | Logo lengkap, latar transparan |
+
+## Generator gambar vektor
+
+[`helonoia/generate.py`](helonoia/generate.py) membuat gambar SVG siap pakai dari aset brand (maskot, tulisan HELONOIA, palet) plus judul bebas. Cukup Python 3, tanpa library tambahan. Hasil masuk ke `helonoia/hasil/` (tidak ikut di-commit).
+
+```bash
+cd helonoia && python3 generate.py -j "Halo, kami Helonoia" -s "Teliti sampai rewel"
+```
+
+| Format (`-f`) | Ukuran | Untuk |
+| --- | --- | --- |
+| `persegi` | 1080 × 1080 | Post Instagram 1:1 |
+| `potret` | 1080 × 1350 | Post Instagram 4:5 |
+| `story` | 1080 × 1920 | Story / Reels / status WhatsApp |
+| `og` | 1200 × 630 | Pratinjau tautan (`og:image`) |
+| `banner` | 1500 × 500 | Header X / banner web |
+| `ikon` | 512 × 512 | Ikon aplikasi / foto profil (hanya maskot) |
+
+Tanpa `-f` semua format dibuat. Opsi lain:
+
+- `--ukuran 1600x900`: ukuran bebas (format melebar: teks kiri, maskot kanan; selain itu bertumpuk rata tengah).
+- `-l gelap|terang|ungu|transparan`: warna latar (bawaan `gelap`).
+- `-o file.svg`: nama file keluaran (untuk satu gambar).
+- `--tanpa-maskot`, `--tanpa-logo`, `--tanpa-dekor`, `--seed N` (posisi kilau).
+- `--font Fredoka.ttf`: ubah judul dan subjudul menjadi path supaya tampil sama tanpa font terpasang (perlu `pip install fonttools`). Tanpa opsi ini teks ditulis sebagai `<text>` Fredoka / Plus Jakarta Sans.
+- `--png`: ekspor PNG juga (perlu `pip install cairosvg`).
+
+Bentuk maskot dan tulisan HELONOIA diambil langsung dari `helonoia_monster.py`, jadi selalu sama dengan logo.
 
 ## Ikon kebiasaan
 
