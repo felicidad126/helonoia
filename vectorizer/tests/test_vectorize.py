@@ -192,6 +192,16 @@ def test_16bit_grayscale_png(tmp_path):
     assert len(v.vectorize(rgb, alpha, v.Options()).palette) >= 3
 
 
+def test_fast_mode_same_palette_and_keeps_thin_outline():
+    image = samples.badge(400)
+    fast, rgb, alpha = run(image, precision="cepat")
+    full, _, _ = run(image)
+    assert fast.palette == full.palette
+    assert fast.work_size[0] < full.work_size[0]
+    # Garis tepi hijau 3 px tidak boleh tertutup kurva lingkaran merah.
+    assert v.similarity(fast, rgb, alpha)[0] > 33
+
+
 def test_fully_transparent_image_fails_cleanly():
     from PIL import Image
     with pytest.raises(ValueError):

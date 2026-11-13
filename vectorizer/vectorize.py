@@ -46,8 +46,23 @@ PALETTES = {
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tif", ".tiff"}
 OUTPUT_FORMATS = ("svg", "pdf", "eps", "png")
 
-WORK_SIZE = 2000  # sisi terpanjang gambar saat diproses (piksel)
-MAX_UPSCALE = 4.0
+
+
+@dataclass(frozen=True)
+class Precision:
+    work_size: int  # sisi terpanjang gambar saat diproses (piksel)
+    max_upscale: float  # pembesaran maksimal untuk gambar kecil
+    splice: int  # ambang sudut VTracer untuk menyambung kurva; kecil = kurva lebih rapat
+
+
+# Resolusi kerja paling menentukan ketelitian bentuk: tepi diletakkan pada grid kerja,
+# jadi grid yang lebih halus = batas warna yang lebih tepat. Diukur pada ilustrasi
+# 1536 px: 2000 px → PSNR 27,1 dB, 4000 px → 29,9 dB, dengan waktu kira-kira 3×.
+# splice 20 (bukan 45, bawaan VTracer) mencegah kurva "kebablasan" menutupi garis tipis.
+PRECISIONS = {
+    "tinggi": Precision(work_size=4000, max_upscale=8.0, splice=20),
+    "cepat": Precision(work_size=2000, max_upscale=4.0, splice=20),
+}
 FLAT_GRADIENT = 6.0  # ΔE antar piksel tetangga; di bawah ini area dianggap rata
 SAMPLE_SIZE = 60_000  # jumlah piksel contoh untuk menentukan palet
 AUTO_MAX_COLORS = 24  # batas warna mode otomatis
@@ -86,6 +101,7 @@ class Options:
     detail: str = "medium"
     stacking: str = "stacked"  # "stacked" atau "cutout"
     remove_bg: str | None = None  # None, "tepi" (tersambung ke pinggir), atau "semua"
+    precision: str = "tinggi"  # "tinggi" atau "cepat"
 
 
 @dataclass
@@ -153,25 +169,53 @@ def load_image(path: Path) -> tuple[np.ndarray, np.ndarray]:
     return np.ascontiguousarray(rgba[..., :3]), np.ascontiguousarray(rgba[..., 3])
 
 
-def prepare(rgb: np.ndarray, alpha: np.ndarray, detail: Detail):
-    """Denoise pada resolusi terkecil yang wajar, lalu ubah ke ukuran kerja."""
+def prepare(rgb: np.ndarray, alpha: np.ndarray, detail: Detail, prec: Precision):
+    """Denoise pada resolusi terkecil yang wajar, lalu ubah ke ukuran kerja.
+
+    Mengembalikan (rgb kerja, mask tidak transparan, skala, dasar). `dasar` adalah gambar
+    hasil denoise sebelum diperbesar, dipakai palette_view().
+    """
     h, w = alpha.shape
-    scale = min(WORK_SIZE / max(h, w), MAX_UPSCALE)
+    scale = min(prec.work_size / max(h, w), prec.max_upscale)
     if scale < 1:  # gambar besar: perkecil dulu supaya denoise cepat
         size = (max(1, round(w * scale)), max(1, round(h * scale)))
         rgb = cv2.resize(rgb, size, interpolation=cv2.INTER_AREA)
         alpha = cv2.resize(alpha, size, interpolation=cv2.INTER_AREA)
     if detail.denoise > 0:
         rgb = cv2.fastNlMeansDenoisingColored(rgb, None, detail.denoise, detail.denoise, 7, 21)
+    base = (rgb, alpha, min(scale, 1.0))
     if scale > 1:
-        size = (round(w * scale), round(h * scale))
-        rgb = cv2.resize(rgb, size, interpolation=cv2.INTER_CUBIC)
-        alpha = cv2.resize(alpha, size, interpolation=cv2.INTER_LINEAR)
-    return rgb, alpha >= 128, scale
+        rgb, alpha = resize_to(rgb, alpha, (round(w * scale), round(h * scale)), up=True)
+    return rgb, alpha >= 128, scale, base
+
+
+def resize_to(rgb: np.ndarray, alpha: np.ndarray, size: tuple[int, int], up: bool):
+    if up:
+        return (cv2.resize(rgb, size, interpolation=cv2.INTER_CUBIC),
+                cv2.resize(alpha, size, interpolation=cv2.INTER_LINEAR))
+    return (cv2.resize(rgb, size, interpolation=cv2.INTER_AREA),
+            cv2.resize(alpha, size, interpolation=cv2.INTER_AREA))
 
 
 # ---------------------------------------------------------------------------
 # Tahap 3: palet
+
+
+def palette_view(base, size: tuple[int, int]):
+    """Gambar pada resolusi standar (mode --cepat), khusus untuk menaksir palet.
+
+    Ambang penaksiran palet (area rata, artefak JPEG) disetel pada resolusi ini. Pada
+    pembesaran yang lebih tinggi, noise JPEG ikut membesar menjadi bercak halus yang
+    terlihat seperti warna tersendiri. Dengan begini palet sama di kedua mode presisi;
+    resolusi tinggi hanya mempertajam letak tepi.
+    """
+    rgb, alpha, base_scale = base
+    std = PRECISIONS["cepat"]
+    est = min(std.work_size / max(size), std.max_upscale)
+    if abs(est - base_scale) > 1e-9:
+        dims = (max(1, round(size[0] * est)), max(1, round(size[1] * est)))
+        rgb, alpha = resize_to(rgb, alpha, dims, up=est > base_scale)
+    return rgb, to_lab(rgb), alpha >= 128
 
 
 def flat_pixels(lab: np.ndarray, opaque: np.ndarray) -> np.ndarray:
@@ -240,7 +284,14 @@ def estimate_palette(rgb: np.ndarray, lab: np.ndarray, opaque: np.ndarray,
     clusters = [c for c in clusters if c[0] / total >= detail.min_share] or clusters[:1]
     clusters.sort(key=lambda c: -c[0])
     # Warna sementara = median RGB anggota; refine_colors() nanti memakai gambar asli.
-    palette = [np.median(rgb_s[np.isin(idx, members)], axis=0) for _, _, members in clusters]
+    # Median bisa lebih berdekatan daripada pusat cluster, jadi gabungkan sekali lagi.
+    palette: list[np.ndarray] = []
+    for _, _, members in clusters:  # urut dari yang terbesar
+        color = np.median(rgb_s[np.isin(idx, members)], axis=0)
+        c_lab = to_lab(color.round().astype(np.uint8))
+        if all(np.linalg.norm(c_lab - to_lab(p.round().astype(np.uint8))) >= detail.merge_de
+               for p in palette):
+            palette.append(color)
 
     # Garis tipis hampir tak punya "bagian dalam", jadi bisa terlewat di atas.
     rgb_all = rgb[opaque]
@@ -465,19 +516,6 @@ def compact(labels: np.ndarray, palette: list[str], keep: list[int]):
     return remap[labels], [palette[i] for i in keep]
 
 
-def merge_duplicates(labels: np.ndarray, palette: list[str]):
-    """Gabungkan warna yang hex-nya jadi sama (mis. setelah refine_colors)."""
-    first: dict[str, int] = {}
-    remap = np.arange(len(palette) + 1, dtype=np.int32)
-    for i, c in enumerate(palette):
-        remap[i] = first.setdefault(c, i)
-    if len(first) == len(palette):
-        return labels, palette
-    labels = remap[labels]
-    keep = sorted(first.values())
-    return compact(labels, palette, keep)
-
-
 def background_label(labels: np.ndarray, n_colors: int) -> int | None:
     """Warna yang menguasai pinggir gambar (≥60%), atau None."""
     border = np.concatenate([labels[0], labels[-1], labels[:, 0], labels[:, -1]])
@@ -508,6 +546,7 @@ def remove_background(labels: np.ndarray, bg: int, transparent: int) -> np.ndarr
 
 
 def trace(rgba: np.ndarray, opts: Options, detail: Detail, scale: float) -> str:
+    prec = PRECISIONS[opts.precision]
     buf = io.BytesIO()
     Image.fromarray(rgba, "RGBA").save(buf, format="PNG")
     return vtracer.convert_raw_image_to_svg(
@@ -522,7 +561,7 @@ def trace(rgba: np.ndarray, opts: Options, detail: Detail, scale: float) -> str:
         corner_threshold=detail.corner,
         length_threshold=4.0,
         max_iterations=10,
-        splice_threshold=45,
+        splice_threshold=prec.splice,
         path_precision=1,
     )
 
@@ -554,12 +593,15 @@ def clean_svg(svg: str, palette_rgb: np.ndarray, palette_hex: list[str],
 def vectorize(rgb: np.ndarray, alpha: np.ndarray, opts: Options) -> Result:
     detail = DETAILS[opts.detail]
     h, w = alpha.shape
-    work_rgb, opaque, scale = prepare(rgb, alpha, detail)
+    work_rgb, opaque, scale, base = prepare(rgb, alpha, detail, PRECISIONS[opts.precision])
     wh, ww = opaque.shape
     lab = to_lab(work_rgb)
 
     locked = opts.palette is not None
-    palette = opts.palette or estimate_palette(work_rgb, lab, opaque, detail)
+    palette = opts.palette or estimate_palette(*palette_view(base, (w, h)), detail)
+    if not locked:
+        # Hex asli dulu, baru label: label dari warna sementara menggeser batas tepi.
+        palette = list(dict.fromkeys(refine_colors(rgb, alpha, palette, detail)))
     n = len(palette)
     transparent = n
     pal_lab = to_lab(np.array([hex_to_rgb(c) for c in palette], np.uint8))
@@ -572,9 +614,6 @@ def vectorize(rgb: np.ndarray, alpha: np.ndarray, opts: Options) -> Result:
                                            detail.thickness * scale)
         if len(kept) < n:
             labels, palette = compact(labels, palette, kept)
-    if not locked:
-        palette = refine_colors(rgb, alpha, palette, detail)
-        labels, palette = merge_duplicates(labels, palette)
     sigma = detail.edge_sigma * scale
     labels = smooth_labels(labels, len(palette) + 1, sigma)
     present = [i for i in range(len(palette)) if (labels == i).any()]
@@ -724,6 +763,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="buat latar transparan (warna yang menguasai pinggir gambar). "
                         "tepi (default) = hanya area yang tersambung ke pinggir; "
                         "semua = juga area berwarna sama di dalam objek, mis. lubang huruf O")
+    p.add_argument("--cepat", action="store_true",
+                   help="sekitar 3× lebih cepat dengan bentuk sedikit kurang teliti "
+                        "(resolusi kerja 2000 px, bukan 4000 px)")
     p.add_argument("-f", "--format", default="svg",
                    help=f"format output, pisahkan dengan koma: {', '.join(OUTPUT_FORMATS)} "
                         "(default svg)")
@@ -744,7 +786,8 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("--colors harus antara 1 dan 64")
         opts = Options(colors=args.colors,
                        palette=parse_palette(args.palette) if args.palette else None,
-                       detail=args.detail, stacking=args.stacking, remove_bg=args.remove_bg)
+                       detail=args.detail, stacking=args.stacking, remove_bg=args.remove_bg,
+                       precision="cepat" if args.cepat else "tinggi")
         files = collect_inputs(args.inputs)
     except (ValueError, FileNotFoundError) as e:
         print(f"error: {e}", file=sys.stderr)
