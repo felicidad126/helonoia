@@ -65,6 +65,7 @@ python3 vectorizer/vectorize.py masuk/ -o keluar/ --cepat
 | `-d`, `--detail` | `low`, `medium` (default), atau `high`. Lihat tabel di bawah. |
 | `--stacking` | `stacked` (default): bentuk bertumpuk, aman dari celah tipis. `cutout`: bentuk saling memotong dan tidak bertumpuk, cocok untuk cutting/engraving. |
 | `--remove-bg` | Buat latar transparan. Latar = warna yang menguasai pinggir gambar. Default (`tepi`): hanya area yang tersambung ke pinggir yang dibuang, jadi warna yang sama di dalam objek (mis. mulut maskot) tetap ada. `--remove-bg semua`: semua area berwarna latar dibuang, termasuk lubang huruf seperti O dan A. |
+| `--gradasi` | Eksperimental. Area yang warnanya berubah bertahap (shading halus, bayangan lembut) diisi gradasi SVG, bukan pita-pita warna rata. Lihat [Gradasi](#gradasi-eksperimental). |
 | `--cepat` | Sekitar 3× lebih cepat dan file sekitar 2× lebih kecil, dengan bentuk sedikit kurang teliti. Lihat [Presisi](#presisi). |
 | `-f`, `--format` | `svg`, `pdf`, `eps`, `png`, boleh lebih dari satu (`svg,pdf`). |
 | `--debug` | Simpan juga `*.debug.png`: gambar berwarna rata yang dilacak. Berguna untuk melihat dari mana sebuah warna atau bentuk berasal. |
@@ -120,6 +121,23 @@ Sebagai pembanding, versi pertama tool ini (setara `--cepat` tanpa perbaikan di 
 Palet warnanya sama di kedua mode; yang berbeda hanya ketelitian tepi.
 
 Kenapa tidak bisa 100% sama (1:1)? Pada ilustrasi di atas, 94% selisih yang tersisa ada tepat di tepi: tepi gambar asli sedikit lembut (transisi sekitar 2 piksel), sedangkan tepi vektor selalu tajam. Sisanya gradasi halus dan noise/tekstur, yang memang tidak ada di vektor berwarna rata. Untuk logo, tepi tajam justru yang diinginkan.
+
+## Gradasi (eksperimental)
+
+Dengan `--gradasi`, setiap area beserta pita-pita di dalamnya dicoba diisi `<radialGradient>` (elips) atau `<linearGradient>` yang dicocokkan dengan piksel aslinya. Ada dua jalur:
+
+- **Shading di dalam bentuk**, misalnya putih mata yang bergradasi ke lavender. Hanya bagian dalam yang dinilai, supaya pergeseran warna anti-aliasing di tepi tidak dikira gradasi.
+- **Bentuk yang memudar ke latar** (bayangan, glow). Area diperluas sekitar 8 px ke latar di sekelilingnya, dan gradasinya memudar sampai ke warna latar.
+
+Gradasi hanya dipakai bila semua syarat ini terpenuhi:
+
+- Selisihnya paling banyak 70% dari versi bidang rata terbaik.
+- Warnanya benar-benar berubah (rentang minimal ΔE 10).
+- Perubahannya bertahap. Pupil hitam di tengah putih mata bukan gradasi.
+
+Pada gambar flat (logo, badge, line-art) tidak ada yang berubah. Dengan `--remove-bg`, bayangan yang menyentuh latar dibuat memudar ke transparan.
+
+Batasan: bayangan yang intinya rata dengan tepi lembut yang tidak merata (pendek di atas-bawah, panjang di ujung) tidak cocok dengan satu gradasi elips, jadi tetap menjadi pita. Bayangan seperti itu paling tepat dibuat dengan efek blur (`feGaussianBlur`), tetapi efek itu tidak dirender oleh cairosvg, yang dipakai di sini untuk PDF/PNG.
 
 ## Cara kerja
 
