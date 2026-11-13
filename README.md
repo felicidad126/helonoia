@@ -41,7 +41,7 @@ cd helonoia && python3 helonoia_monster.py
 
 ## Karakter Noia: pose & ekspresi
 
-[`helonoia/helonoia_karakter.py`](helonoia/helonoia_karakter.py) menggambar karakter monster ungu bergaris tebal (tanduk lime, cakar besar, ekor bergaris lime) sebagai SVG vektor. Tubuhnya dibangun dari kerangka sendi, jadi pose baru cukup ditulis sebagai posisi sendi di `POSE`, dan ekspresi baru cukup ditulis sebagai bentuk mata, alis, mulut, dan efek di `EKSPRESI`. Cukup Python 3.
+[`helonoia/helonoia_karakter.py`](helonoia/helonoia_karakter.py) menyusun karakter Noia sebagai SVG vektor dari bagian-bagian tubuh (kepala, kedua lengan, badan, kaki, ekor) yang dijiplak dari gambar sumber [`helonoia/sumber/noia.webp`](helonoia/sumber/noia.webp). Pose `siaga` dengan ekspresi `galak` sama dengan gambar sumber. Pose lain dibuat dengan memutar bagian-bagian itu di sendinya, dan ekspresi lain digambar di atas kepala yang wajahnya dikosongkan. Cukup Python 3.
 
 ```bash
 cd helonoia && python3 helonoia_karakter.py            # 6 pose + lembar_pose.svg + lembar_ekspresi.svg
@@ -53,14 +53,23 @@ python3 helonoia_karakter.py --daftar                   # daftar pose & ekspresi
 
 | Pose (`-p`) | Tingkah laku | Ekspresi bawaan |
 | --- | --- | --- |
-| `siaga` | Kuda-kuda, cakar terbuka (seperti sketsa) | `galak` |
-| `melambai` | Menyapa duluan | `senang` |
-| `lompat` | Lompat kegirangan | `tertawa` |
-| `berpikir` | Tangan di dagu | `bingung` |
-| `menunjuk` | "Lihat ini!", cocok untuk promosi | `senang` |
-| `duduk` | Duduk santai | `ngantuk` |
+| `siaga` | Kuda-kuda, cakar terbuka (gambar sumber) | `galak` |
+| `melambai` | Lengan kanan terangkat, menyapa | `senang` |
+| `sorak` | Kedua cakar terangkat sambil melompat | `tertawa` |
+| `menerkam` | Cakar terangkat, badan condong | `galak` |
+| `termenung` | Kepala miring | `bingung` |
+| `lesu` | Bahu turun, kepala tertunduk | `ngantuk` |
 
-Ekspresi (`-e`): `galak`, `senang`, `curiga`, `kaget`, `sedih`, `ngantuk`, `tertawa`, `malu`, `bingung`, `jatuh_cinta`. Semua pose bisa dipasangkan dengan semua ekspresi. `-o file.svg` menentukan nama file, `--png` ikut mengekspor PNG (perlu `pip install cairosvg`).
+Ekspresi (`-e`): `galak` (wajah asli sumber), `senang`, `curiga`, `kaget`, `sedih`, `ngantuk`, `tertawa`, `malu`, `bingung`, `jatuh_cinta`. Semua pose bisa dipasangkan dengan semua ekspresi. `-o file.svg` menentukan nama file, `--png` ikut mengekspor PNG (perlu `pip install cairosvg`).
+
+Pose baru ditambah di `POSE` sebagai sudut putar tiap bagian, ekspresi baru di `EKSPRESI` sebagai bentuk mata, alis, mulut, dan efek. Karena tiap bagian kaku dan hanya diputar, pose terbatas pada gerakan lengan, kepala, ekor, dan seluruh badan; kaki kanan menyatu dengan badan.
+
+| File | Isi |
+| --- | --- |
+| `helonoia/sumber/noia.webp` | Gambar sumber karakter |
+| `helonoia/jiplak_noia.py` | Menjiplak gambar sumber menjadi `noia_bagian.json`. Hanya dijalankan ulang kalau gambar sumber diganti (perlu `pip install opencv-python-headless scipy numpy`) |
+| `helonoia/noia_bagian.json` | Path vektor tiap bagian tubuh |
+| `helonoia/karakter/` | Hasil: 6 pose dan dua lembar |
 
 ## Generator gambar vektor
 

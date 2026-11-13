@@ -1,419 +1,245 @@
 """
-HELONOIA – generator karakter "Noia" (gaya kartun bergaris tebal) dengan ekspresi & pose
-======================================================================================
+HELONOIA – generator karakter "Noia" dengan pose & ekspresi
+===========================================================
 
-Menggambar karakter monster ungu bercakar besar, bertanduk lime, dan berekor sebagai
-SVG vektor murni. Bentuk dibangun dari kerangka (sendi bahu-siku-pergelangan, pinggul-
-lutut-pergelangan kaki), jadi setiap pose cukup ditulis sebagai posisi sendi, dan setiap
-ekspresi cukup ditulis sebagai bentuk mata, alis, mulut, dan efek.
+Menyusun karakter Noia sebagai SVG vektor murni dari bagian-bagian tubuh yang dijiplak
+dari gambar sumber (sumber/noia.webp -> noia_bagian.json, lihat jiplak_noia.py).
+Pose "siaga" dengan ekspresi "galak" sama dengan gambar sumber; pose lain dibuat dengan
+memutar kepala, lengan, kaki, dan ekor di sendinya, dan ekspresi lain digambar di atas
+kepala yang wajahnya dikosongkan. Cukup Python 3, tanpa library tambahan.
 
-Tidak butuh library tambahan: cukup Python 3.
-
-    python3 helonoia_karakter.py                      # semua pose + lembar ekspresi
+    python3 helonoia_karakter.py                      # semua pose + lembar pose & ekspresi
     python3 helonoia_karakter.py -p siaga -e galak    # satu kombinasi
-    python3 helonoia_karakter.py -p melambai -e senang -o noia.svg
-    python3 helonoia_karakter.py --daftar             # lihat pose & ekspresi yang ada
+    python3 helonoia_karakter.py -e kaget             # kepala saja
+    python3 helonoia_karakter.py --semua              # semua kombinasi pose x ekspresi
+    python3 helonoia_karakter.py --daftar             # daftar pose & ekspresi
     python3 helonoia_karakter.py --png                # + PNG (perlu `pip install cairosvg`)
 
-Hasil (bawaan) di folder karakter/:
-    <pose>_<ekspresi>.svg   satu karakter, latar transparan
-    lembar_pose.svg         semua pose dengan ekspresi pasangannya
-    lembar_ekspresi.svg     semua ekspresi (kepala saja)
+Hasil (bawaan) di folder karakter/.
 
-Teknik gambar:
-  * Garis luar: setiap "lapisan" digambar dua kali – dulu goresan hitam tebal, lalu isinya.
-    Bentuk dalam satu lapisan menyatu tanpa garis sambungan (mis. lengan + telapak + jari),
-    sedangkan lapisan yang bertumpuk tetap punya garis pemisah, seperti gambar kartun.
-  * Bayangan: warna gelap diisi penuh, lalu warna dasar yang digeser ke kiri-atas dipotong
-    (clip) oleh bentuk aslinya, sehingga tersisa sabit bayangan di sisi kanan-bawah.
+Susunan script
+--------------
+1. Data bagian      path hasil jiplakan + titik sendi
+2. Kanvas           penampung SVG + batas gambar
+3. Wajah            mata, alis, mulut, efek (untuk ekspresi selain bawaan sumber)
+4. EKSPRESI, POSE   data: tinggal tambah entri baru
+5. Perakitan        gambar(pose, ekspresi)
+6. Lembar & CLI
+
+Satuan koordinat = piksel gambar sumber (1536 x 1024).
 """
 
 import argparse
+import json
 import math
 import os
-import sys
+import re
+
+DI_SINI = os.path.dirname(os.path.abspath(__file__))
 
 # ---------------------------------------------------------------------------
-# Palet (sama dengan logo, ditambah warna cakar & aksen ekspresi)
+# 1. Data bagian
 # ---------------------------------------------------------------------------
-INK    = "#120B1E"   # garis luar
-VIO    = "#A35BFA"   # badan
-VIO_SH = "#7C3FD6"   # bayangan badan
-BELLY  = "#D9B8FF"   # perut
-BEL_SH = "#C29BF5"
-LIME   = "#C6FF3D"   # tanduk, garis ekor
-LIM_SH = "#93CC1A"
-CLAW   = "#F6EEFF"   # cakar
-CLW_SH = "#C7AEF0"
-WHITE  = "#FFFFFF"   # bola mata
-MOUTH  = "#3B1258"   # rongga mulut
+with open(os.path.join(DI_SINI, "noia_bagian.json")) as _f:
+    _DATA = json.load(_f)
+BAGIAN = _DATA["bagian"]
+URUTAN = _DATA["urutan"]          # dari belakang ke depan
+
+INK    = "#0A0212"   # garis
+VIO    = BAGIAN["kepala"]["dasar"]   # warna kulit kepala (untuk kelopak mata)
+VIO_SH = "#6C24C5"   # alas badan (terlihat kalau lengan/kepala bergeser)
+LIME   = "#DAF45A"
+WHITE  = "#FFFFFF"
+MOUTH  = "#3B1258"
 TONGUE = "#FF7FB0"
 BLUSH  = "#FF7FB0"
-ANGER  = "#FF4F7B"
 TEAR   = "#8FD8FF"
+OL = 6.0             # tebal garis untuk bentuk tambahan (efek, alas)
 
-OL = 5.5   # tebal garis luar
+# Titik putar tiap bagian (koordinat sumber)
+SENDI = {
+    "kepala": (720, 500),      # leher
+    "lengan_n": (838, 515),    # bahu kanan layar (pusat potongan lingkaran di jiplak_noia.py)
+    "lengan_k": (612, 558),    # bahu kiri layar
+    "kaki_k": (640, 770),      # pinggul kiri layar
+    "ekor": (880, 690),        # pangkal ekor
+}
+PUSAT = (730, 600)             # titik putar seluruh badan
+# Alas badan: bidang gelap di bawah leher & bahu supaya tidak bolong saat bagian diputar
+ALAS = "M 640 500 C 700 470 800 470 850 500 C 880 540 860 610 800 630 C 740 640 660 630 640 590 Z"
 
 
 # ---------------------------------------------------------------------------
-# Geometri dasar
+# 2. Kanvas
 # ---------------------------------------------------------------------------
-def add(a, b):
-    return (a[0] + b[0], a[1] + b[1])
-
-
-def mul(a, k):
-    return (a[0] * k, a[1] * k)
-
-
-def ang(deg):
-    r = math.radians(deg)
-    return (math.cos(r), math.sin(r))
-
-
-def rot(p, deg):
+def putar(p, deg, pusat):
     c, s = math.cos(math.radians(deg)), math.sin(math.radians(deg))
-    return (p[0] * c - p[1] * s, p[0] * s + p[1] * c)
+    x, y = p[0] - pusat[0], p[1] - pusat[1]
+    return (pusat[0] + x * c - y * s, pusat[1] + x * s + y * c)
 
 
-def fmt(pts, closed=True):
-    d = "M " + " L ".join(f"{x:.1f} {y:.1f}" for x, y in pts)
-    return d + (" Z" if closed else "")
+def ubah_path(d, f):
+    """Terapkan fungsi titik f((x, y)) -> (x, y) ke semua koordinat path (perintah absolut M L C Q Z)."""
+    out, x = [], None
+    for tok in re.findall(r"[MLCQZ]|-?\d+\.?\d*", d):
+        if tok in "MLCQZ":
+            out.append(tok)
+        elif x is None:
+            x = float(tok)
+        else:
+            out.append("%.1f %.1f" % f((x, float(tok))))
+            x = None
+    return " ".join(out)
 
 
-def catmull(pts, n=10):
-    """Titik-titik halus (Catmull-Rom) yang melewati semua `pts`. Mengembalikan (titik, segmen, t)."""
-    if len(pts) == 2:
-        return [(add(pts[0], mul((pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]), i / n)), 0, i / n)
-                for i in range(n + 1)]
-    P = [pts[0]] + list(pts) + [pts[-1]]
-    out = []
-    for i in range(1, len(P) - 2):
-        p0, p1, p2, p3 = P[i - 1], P[i], P[i + 1], P[i + 2]
-        for j in range(n + (1 if i == len(P) - 3 else 0)):
-            t = j / n
-            t2, t3 = t * t, t * t * t
-            out.append((tuple(0.5 * (2 * p1[k] + (-p0[k] + p2[k]) * t
-                                     + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2
-                                     + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3)
-                             for k in (0, 1)), i - 1, t))
-    return out
+def bulat(cx, cy, rx, ry=None, n=40):
+    ry = ry or rx
+    return "M " + " L ".join("%.1f %.1f" % (cx + rx * math.cos(2 * math.pi * i / n),
+                                           cy + ry * math.sin(2 * math.pi * i / n)) for i in range(n)) + " Z"
 
 
-def tube(pts, ws, n=10, cap=8):
-    """Bentuk pipa halus melewati `pts` dengan setengah-lebar `ws` di tiap titik (ujung membulat)."""
-    s = catmull(pts, n)
-    c = [p for p, _, _ in s]
-    w = [ws[i] + (ws[min(i + 1, len(ws) - 1)] - ws[i]) * t for _, i, t in s]
-    L, R = [], []
-    for k in range(len(c)):
-        a, b = c[max(k - 1, 0)], c[min(k + 1, len(c) - 1)]
-        tx, ty = b[0] - a[0], b[1] - a[1]
-        ln = math.hypot(tx, ty) or 1
-        nx, ny = -ty / ln, tx / ln
-        L.append((c[k][0] + nx * w[k], c[k][1] + ny * w[k]))
-        R.append((c[k][0] - nx * w[k], c[k][1] - ny * w[k]))
-
-    def capr(center, frm, r):
-        a0 = math.atan2(frm[1] - center[1], frm[0] - center[0])
-        return [(center[0] + math.cos(a0 - math.pi * k / cap) * r,
-                 center[1] + math.sin(a0 - math.pi * k / cap) * r) for k in range(1, cap)]
-
-    end = capr(c[-1], L[-1], w[-1]) if w[-1] > 0.5 else []
-    start = capr(c[0], R[0], w[0]) if w[0] > 0.5 else []
-    return fmt(L + end + R[::-1] + start)
+def gores(d, w=6, warna=INK, fill="none"):
+    return (f'<path d="{d}" fill="{fill}" stroke="{warna}" stroke-width="{w:.1f}" '
+            f'stroke-linecap="round" stroke-linejoin="round"/>')
 
 
-def arc_line(base, deg, length, turn, n=16):
-    """Garis tengah melengkung: mulai di `base` ke arah `deg`, berbelok total `turn` derajat."""
-    pts, p = [base], base
-    for i in range(n):
-        a = deg + turn * (i + 0.5) / n
-        p = add(p, mul(ang(a), length / n))
-        pts.append(p)
-    return pts
-
-
-def horn(base, deg, length, w, turn):
-    """Tanduk / cakar: pipa melengkung yang meruncing sampai ujung."""
-    pts = arc_line(base, deg, length, turn, 8)
-    ws = [w * (1 - i / 8) ** 0.8 for i in range(9)]
-    return tube(pts, ws, n=4)
-
-
-def blob(cx, cy, rx, ry_top, ry_bot, squeeze=0.0, n=48):
-    """Bulatan dengan tinggi atas/bawah berbeda; `squeeze` menyempitkan bagian bawah (dagu)."""
-    pts = []
-    for i in range(n):
-        t = 2 * math.pi * i / n
-        s = math.sin(t)
-        ry = ry_bot if s > 0 else ry_top
-        x = rx * math.cos(t) * (1 - squeeze * max(s, 0) ** 2)
-        pts.append((cx + x, cy + ry * s))
-    return fmt(pts)
-
-
-def spike(p1, p2, tip, bend=0.0):
-    """Duri / telinga: segitiga dengan sisi melengkung dari alas p1-p2 ke ujung `tip`."""
-    m1 = add(mul(add(p1, tip), 0.5), (bend, -abs(bend) * 0.3))
-    m2 = add(mul(add(p2, tip), 0.5), (bend, -abs(bend) * 0.3))
-    return (f"M {p1[0]:.1f} {p1[1]:.1f} Q {m1[0]:.1f} {m1[1]:.1f} {tip[0]:.1f} {tip[1]:.1f} "
-            f"Q {m2[0]:.1f} {m2[1]:.1f} {p2[0]:.1f} {p2[1]:.1f} Z")
-
-
-# ---------------------------------------------------------------------------
-# Kanvas: lapisan bergaris, bayangan, batas gambar
-# ---------------------------------------------------------------------------
 class Kanvas:
+    _seri = 0   # awalan id clip unik, supaya beberapa gambar aman digabung dalam satu lembar
+
     def __init__(self):
-        self.out = []
-        self.defs = []
-        self.nid = 0
+        Kanvas._seri += 1
+        self.awalan = f"c{Kanvas._seri}_"
+        self.out, self.defs, self.nid = [], [], 0
         self.box = [1e9, 1e9, -1e9, -1e9]
 
-    def track(self, d, tf=(0, 0)):
-        nums = [float(v) for v in d.replace("M", " ").replace("L", " ").replace("Q", " ")
-                .replace("Z", " ").replace("C", " ").split()]
-        for i in range(0, len(nums) - 1, 2):
-            x, y = nums[i] + tf[0], nums[i + 1] + tf[1]
-            b = self.box
+    def lacak(self, d, f=None):
+        """Perluas batas gambar dengan titik-titik path `d` (f = transformasi titik)."""
+        v = [float(x) for x in re.findall(r"-?\d+\.?\d*", d)]
+        b = self.box
+        for i in range(0, len(v) - 1, 2):
+            x, y = f((v[i], v[i + 1])) if f else (v[i], v[i + 1])
             b[0], b[1], b[2], b[3] = min(b[0], x), min(b[1], y), max(b[2], x), max(b[3], y)
 
     def clip(self, d):
         self.nid += 1
-        cid = f"k{self.nid}"
+        cid = f"{self.awalan}{self.nid}"
         self.defs.append(f'<clipPath id="{cid}"><path d="{d}"/></clipPath>')
         return cid
 
-    def lapisan(self, shapes, tf=(0, 0), garis=OL):
-        """shapes: daftar dict {d, fill, shade?, geser?, dalam?: [(d, warna)]}.
-        Semua bentuk dalam satu lapisan menyatu: garis luar hanya di tepi gabungannya."""
-        g = []
-        if garis:
-            g.append(f'<g fill="{INK}" stroke="{INK}" stroke-width="{2 * garis}" stroke-linejoin="round">'
-                     + "".join(f'<path d="{s["d"]}"/>' for s in shapes) + "</g>")
-        for s in shapes:
-            self.track(s["d"], tf)
-            d, fill, sh = s["d"], s["fill"], s.get("shade")
-            if not sh and not s.get("dalam"):
-                g.append(f'<path d="{d}" fill="{fill}"/>')
-                continue
-            cid = self.clip(d)
-            if sh:
-                dx, dy = s.get("geser", (-7, -7))
-                g.append(f'<path d="{d}" fill="{sh}"/><g clip-path="url(#{cid})">'
-                         f'<path d="{d}" fill="{fill}" transform="translate({dx} {dy})"/></g>')
-            else:
-                g.append(f'<path d="{d}" fill="{fill}"/>')
-            for dd, warna in s.get("dalam", []):
-                g.append(f'<g clip-path="url(#{cid})"><path d="{dd}" fill="{warna}"/></g>')
-        self.out.append("".join(g))
-
-    def raw(self, svg, d_track=None, tf=(0, 0)):
-        if d_track:
-            self.track(d_track, tf)
+    def tambah(self, svg, lacak=None, f=None):
+        if lacak:
+            self.lacak(lacak, f)
         self.out.append(svg)
 
-    def svg(self, pad=24, ukuran=None):
+    def bingkai(self, pad=24):
         x0, y0, x1, y1 = self.box
-        x0, y0, x1, y1 = x0 - pad, y0 - pad, x1 + pad, y1 + pad
-        w, h = x1 - x0, y1 - y0
-        s = max(w, h)
-        x0 -= (s - w) / 2
-        y0 -= (s - h) / 2
-        px = ukuran or 1000
-        return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x0:.1f} {y0:.1f} {s:.1f} {s:.1f}" '
-                f'width="{px}" height="{px}"><defs>{"".join(self.defs)}</defs>{"".join(self.out)}</svg>\n')
+        s = max(x1 - x0, y1 - y0) + 2 * pad
+        return ((x0 + x1 - s) / 2, (y0 + y1 - s) / 2, s)
 
     def isi(self):
         return f'<defs>{"".join(self.defs)}</defs>{"".join(self.out)}'
 
-
-# ---------------------------------------------------------------------------
-# Bagian tubuh
-# ---------------------------------------------------------------------------
-def cakar_set(K, ujung, arah, curl, panjang=34, lebar=19, belok=70):
-    """Cakar-cakar putih di ujung jari. ujung: daftar (titik, arah jari).
-    curl = arah lengkung: +1 searah jarum jam, -1 berlawanan."""
-    shapes = []
-    for (p, a) in ujung:
-        # pangkal sedikit masuk ke jari, mulai agak melebar keluar lalu melengkung
-        d = horn(add(p, mul(ang(a), -lebar * 0.45)), a - curl * belok * 0.3, panjang, lebar / 2, curl * belok)
-        shapes.append({"d": d, "fill": CLAW, "shade": CLW_SH, "geser": (-4, -4)})
-    K.lapisan(shapes)
+    def svg(self, ukuran=1000):
+        x, y, s = self.bingkai()
+        return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x:.1f} {y:.1f} {s:.1f} {s:.1f}" '
+                f'width="{ukuran}" height="{ukuran}">{self.isi()}</svg>\n')
 
 
-def tangan(sendi, w, arah, spread=30, curl=1, jari=3, panjang_jari=20, cakar=34):
-    """Lengan (bahu-siku-pergelangan) + telapak + jari. Mengembalikan (shapes, ujung_jari)."""
-    u = ang(arah)
-    v = (-u[1], u[0])
-    W = sendi[-1]
-    shapes = [{"d": tube(sendi, w), "fill": VIO, "shade": VIO_SH}]
-    palm_end = add(W, mul(u, w[-1] * 0.7))
-    shapes.append({"d": tube([W, palm_end], [w[-1], w[-1] * 1.15]), "fill": VIO, "shade": VIO_SH})
-    ujung = []
-    offs = [(-1 + 2 * i / (jari - 1)) if jari > 1 else 0 for i in range(jari)]
-    for o in offs:
-        a = arah + o * spread
-        base = add(add(palm_end, mul(v, o * w[-1] * 0.8)), mul(u, -4))
-        tip = add(base, mul(ang(a), panjang_jari))
-        shapes.append({"d": tube([base, tip], [w[-1] * 0.5, w[-1] * 0.44]), "fill": VIO, "shade": VIO_SH,
-                       "geser": (-4, -4)})
-        ujung.append((tip, a))
-    return shapes, ujung
-
-
-def anggota(K, sendi, w, arah, spread, curl, cakar_len, jari=3, panjang_jari=20, lebar_cakar=19, belok=70):
-    shapes, ujung = tangan(sendi, w, arah, spread, curl, jari, panjang_jari)
-    K.lapisan(shapes)
-    cakar_set(K, ujung, arah, curl, cakar_len, lebar_cakar, belok)   # cakar di atas ujung jari
-
-
-def ekor(K, pts, ws):
-    d = tube(pts, ws, n=10)
-    # garis lime di sisi dalam ekor: pipa yang sama, digeser ke satu sisi
-    geser = [(p[0] + 10, p[1] + 12) for p in pts]
-    lime = tube(geser, [x * 0.75 for x in ws], n=10)
-    K.lapisan([{"d": d, "fill": VIO, "shade": VIO_SH, "dalam": [(lime, LIME)]}])
-
-
-def badan(K, hip, chest):
-    bawah = add(hip, (0, 26))
-    d = tube([bawah, hip, add(mul(add(hip, chest), 0.5), (0, 0)), chest], [50, 64, 58, 46], n=10)
-    perut = blob(hip[0] + 4, (hip[1] + chest[1]) / 2 + 16, 40, 48, 44)
-    K.lapisan([{"d": d, "fill": VIO, "shade": VIO_SH, "geser": (-9, -6), "dalam": [(perut, BELLY)]}])
+def svg_bagian(nama):
+    """Satu bagian hasil jiplakan: siluet berwarna dasar, area warna lain, lalu garis tinta."""
+    b = BAGIAN[nama]
+    return (f'<path d="{b["siluet"]}" fill="{b["dasar"]}"/>'
+            + "".join(f'<path d="{d}" fill="{w}" fill-rule="evenodd"/>' for w, d in b["lapis"])
+            + f'<path d="{b["tinta"]}" fill="{INK}" fill-rule="evenodd"/>')
 
 
 # ---------------------------------------------------------------------------
-# Kepala & wajah (koordinat lokal kepala, pusat 0,0)
+# 3. Wajah (untuk ekspresi yang bukan bawaan sumber) – koordinat sumber
 # ---------------------------------------------------------------------------
-HEAD_RX, HEAD_TOP, HEAD_BOT = 108, 92, 84
-
-
-def kepala(K, c, tilt, ekspresi):
-    tf = f"translate({c[0]:.1f} {c[1]:.1f}) rotate({tilt})"
-    k2 = Kanvas()
-    k2.nid = K.nid
-    # tanduk (di belakang kepala)
-    k2.lapisan([
-        {"d": horn((-52, -60), -150, 150, 27, 120), "fill": LIME, "shade": LIM_SH, "geser": (-6, -6)},
-        {"d": horn((52, -60), -30, 150, 27, -120), "fill": LIME, "shade": LIM_SH, "geser": (-6, -6)},
-    ])
-    hd = blob(0, 0, HEAD_RX, HEAD_TOP, HEAD_BOT, squeeze=0.22)
-    shapes = [
-        # telinga runcing di sisi kepala
-        {"d": spike((-96, -34), (-104, 4), (-150, -66), bend=-4), "fill": VIO, "shade": VIO_SH},
-        {"d": spike((96, -34), (104, 4), (150, -66), bend=4), "fill": VIO, "shade": VIO_SH},
-        # bulu pipi bergerigi
-        {"d": spike((-96, 18), (-80, 52), (-132, 52)), "fill": VIO},
-        {"d": spike((96, 18), (80, 52), (132, 52)), "fill": VIO, "shade": VIO_SH},
-        # jambul di ubun-ubun
-        {"d": spike((-14, -86), (22, -88), (-6, -130), bend=-4), "fill": VIO},
-        {"d": hd, "fill": VIO, "shade": VIO_SH, "geser": (-10, -9)},
-    ]
-    k2.lapisan(shapes)
-    wajah(k2, ekspresi)
-    K.defs += k2.defs
-    K.nid = k2.nid
-    K.raw(f'<g transform="{tf}">{"".join(k2.out)}</g>')
-    # batas kepala (lokal -> global, kira-kira)
-    x0, y0, x1, y1 = k2.box
-    for x, y in ((x0, y0), (x1, y0), (x0, y1), (x1, y1)):
-        p = add(c, rot((x, y), tilt))
-        K.track(f"M {p[0]} {p[1]}")
-
-
-def stroke(d, w=6, col=INK, fill="none"):
-    return (f'<path d="{d}" fill="{fill}" stroke="{col}" stroke-width="{w}" '
-            f'stroke-linecap="round" stroke-linejoin="round"/>')
-
-
-EYE = (42, 6)   # posisi mata kanan (x positif); mata kiri dicerminkan
+# Mata: (pusat, skala, cermin). Satuan lokal mata: bola mata 30 x 24, x positif = sisi luar
+# wajah. Mata jauh (kiri layar) lebih kecil dan dicerminkan karena kepala menghadap 3/4.
+MATA = (((560, 420), 1.75, -1), ((735, 388), 2.6, 1))
+MULUT = (660, 474)
+SKALA_MULUT = 2.0
 
 
 def mata(K, cfg):
-    """cfg: bentuk 'buka' dengan kelopak (lid) & pupil, atau bentuk garis (senang/tidur/tawa)."""
-    out = ""
-    kind = cfg.get("bentuk", "buka")
-    for sx in (-1, 1):
-        ex, ey = EYE[0] * sx, EYE[1]
-        if kind == "buka":
-            rx, ry = cfg.get("rx", 26), cfg.get("ry", 30)
-            eye = blob(ex, ey, rx, ry, ry * 0.95)
-            cid = K.clip(eye)
-            gx, gy = cfg.get("lirik", (0, 4))
-            pr = cfg.get("pupil", 14)
-            px, py = ex + gx * (1 if cfg.get("lirik_cermin", False) is False else sx), ey + gy
-            pup = (f'<circle cx="{px:.1f}" cy="{py:.1f}" r="{pr}" fill="{INK}"/>'
-                   f'<circle cx="{px - pr * 0.35:.1f}" cy="{py - pr * 0.4:.1f}" r="{max(3, pr * 0.32):.1f}" fill="{WHITE}"/>')
+    jenis = cfg.get("bentuk", "buka")
+    for (cx, cy), s, sx in MATA:
+        def f(p):
+            return (cx + p[0] * s * sx, cy + p[1] * s)
+
+        def g(d, w=5.5):
+            return gores(ubah_path(d, f), w * s)
+
+        o = ""
+        if jenis == "buka":
+            rx, ry = cfg.get("rx", 30), cfg.get("ry", 24)
+            bola = ubah_path(bulat(0, 0, rx, ry), f)
+            cid = K.clip(bola)
+            gx, gy = cfg.get("lirik", (0, 0))     # lirikan dalam arah layar
+            pr = cfg.get("pupil", 12) * s
+            px, py = cx + gx * s, cy + gy * s
+            isi = (f'<circle cx="{px:.1f}" cy="{py:.1f}" r="{pr:.1f}" fill="{INK}"/>'
+                   f'<circle cx="{px - pr * 0.35:.1f}" cy="{py - pr * 0.4:.1f}" r="{pr * 0.3:.1f}" fill="{WHITE}"/>')
             if cfg.get("kilau"):
-                pup += f'<circle cx="{px + pr * 0.35:.1f}" cy="{py + pr * 0.35:.1f}" r="{pr * 0.18:.1f}" fill="{WHITE}"/>'
-            lid = ""
+                isi += f'<circle cx="{px + pr * 0.4:.1f}" cy="{py + pr * 0.35:.1f}" r="{pr * 0.17:.1f}" fill="{WHITE}"/>'
+            kelopak = ""
             if "kelopak" in cfg:
-                # garis kelopak: (y di sisi luar, y di sisi dalam) – di atasnya tertutup kulit
-                yo, yi = ey + cfg["kelopak"][0], ey + cfg["kelopak"][1]
-                xo, xi = ex + sx * (rx + 6), ex - sx * (rx + 6)
-                lid_d = f"M {xo} {yo} L {xi} {yi} L {xi} {ey - 80} L {xo} {ey - 80} Z"
-                lid = (f'<path d="{lid_d}" fill="{VIO}"/>'
-                       + stroke(f"M {xo} {yo} L {xi} {yi}", 7))
-            out += (f'<path d="{eye}" fill="{WHITE}"/><g clip-path="url(#{cid})">{pup}{lid}</g>'
-                    + stroke(eye, OL))
-            if cfg.get("bawah"):   # garis kelopak bawah (marah / curiga)
-                out += stroke(f"M {ex - sx * 18} {ey + ry * 0.95 + 6} Q {ex} {ey + ry + 12} {ex + sx * 18} {ey + ry * 0.95 + 4}",
-                              4.5, VIO_SH)
-        elif kind == "senang":     # ^ ^
-            out += stroke(f"M {ex - 20} {ey + 8} Q {ex} {ey - 22} {ex + 20} {ey + 8}", 8)
-        elif kind == "tidur":      # u u
-            out += stroke(f"M {ex - 20} {ey - 2} Q {ex} {ey + 18} {ex + 20} {ey - 2}", 7)
-            out += stroke(f"M {ex + sx * 20} {ey - 2} l {sx * 7} -4", 5)
-        elif kind == "tawa":       # > <
-            out += stroke(f"M {ex - sx * 18} {ey - 14} L {ex + sx * 12} {ey + 2} L {ex - sx * 18} {ey + 16}", 8)
-    K.raw(out)
-
-
-def alis(K, cfg):
-    if not cfg:
-        return
-    out = ""
-    for sx in (-1, 1):
-        (xo, yo), (xm, ym), (xi, yi) = cfg
-        out += stroke(f"M {sx * xo} {yo} Q {sx * xm} {ym} {sx * xi} {yi}", 11)
-    K.raw(out)
-
-
-def taring(x, y, h=12, w=9, arah=-1):
-    """Gigi taring kecil; arah -1 = menunjuk ke atas (dari bibir bawah), +1 = ke bawah."""
-    d = f"M {x - w / 2} {y} L {x} {y + arah * h} L {x + w / 2} {y} Z"
-    return f'<path d="{d}" fill="{WHITE}" stroke="{INK}" stroke-width="3.5" stroke-linejoin="round"/>'
+                # garis kelopak dari sisi dalam (x negatif) ke sisi luar; di atasnya tertutup kulit
+                xi, xo = -rx - 8, rx + 8
+                yi, yo = cfg["kelopak"]
+                tutup = ubah_path(f"M {xi} {yi} L {xo} {yo} L {xo} -70 L {xi} -70 Z", f)
+                isi += f'<path d="{tutup}" fill="{VIO}"/>'
+                kelopak = g(f"M {xi + 4} {yi + (yo - yi) * 4 / (xo - xi):.1f} L {xo - 2} {yo}", 5)
+            o = (f'<path d="{bola}" fill="{WHITE}"/><g clip-path="url(#{cid})">{isi}</g>'
+                 + gores(bola, 2.3 * s) + kelopak)
+        elif jenis == "senang":     # ^ ^
+            o = g("M -24 8 Q 0 -22 24 8")
+        elif jenis == "tidur":      # u u
+            o = g("M -24 -4 Q 0 16 24 -4", 5) + g("M 24 -4 L 32 -9", 4)
+        elif jenis == "tawa":       # > <
+            o = g("M 20 -16 L -14 0 L 20 16")
+        if cfg.get("alis"):
+            (x0, y0), (x1, y1), (x2, y2) = cfg["alis"]
+            o += g(f"M {x0} {y0} Q {x1} {y1} {x2} {y2}")
+        K.tambah(o)
 
 
 def mulut(K, jenis):
-    y = 50
-    if jenis == "cemberut":
-        o = stroke(f"M -20 {y + 6} Q 0 {y - 8} 20 {y + 6}", 6)
-        o += taring(-12, y + 2, 11, 9, -1) + taring(12, y + 2, 11, 9, -1)
-    elif jenis == "seringai":
-        o = stroke(f"M -26 {y} Q 2 {y + 12} 28 {y - 10}", 6) + taring(12, y + 4, 13, 10, 1)
+    """Mulut, ditulis dalam satuan kecil di sekitar (0, 0) lalu diperbesar ke titik MULUT."""
+    k = SKALA_MULUT
+
+    def f(p):
+        return (MULUT[0] + p[0] * k, MULUT[1] + p[1] * k)
+
+    def g(d, w=3.0):
+        return gores(ubah_path(d, f), w * k)
+
+    def gigi(x, y, w=7, h=9):
+        d = f"M {x - w / 2} {y} L {x - w * 0.3} {y + h} L {x + w * 0.4} {y + h * 0.8} L {x + w / 2} {y} Z"
+        return gores(ubah_path(d, f), 2.2 * k, INK, WHITE)
+
+    if jenis == "seringai":
+        o = g("M -24 -2 Q 0 12 26 -10") + gigi(14, -3, 8, 11)
     elif jenis in ("senyum", "tawa"):
-        lb = 30 if jenis == "senyum" else 34
-        dl = 26 if jenis == "senyum" else 30
-        d = f"M -{lb} {y - 4} Q 0 {y + 2} {lb} {y - 4} Q {lb - 4} {y + dl} 0 {y + dl + 2} Q -{lb - 4} {y + dl} -{lb} {y - 4} Z"
+        lb, dl = (26, 20) if jenis == "senyum" else (30, 24)
+        d = ubah_path(f"M {-lb} -8 Q 0 -2 {lb} -8 Q {lb - 4} {dl} 0 {dl + 2} Q {-lb + 4} {dl} {-lb} -8 Z", f)
+        lidah = ubah_path(bulat(3, dl, lb * 0.6, dl * 0.5), f)
         cid = K.clip(d)
-        lidah = f'<ellipse cx="4" cy="{y + dl}" rx="{lb * 0.6}" ry="{dl * 0.5}" fill="{TONGUE}"/>'
-        o = (f'<path d="{d}" fill="{MOUTH}"/><g clip-path="url(#{cid})">{lidah}</g>'
-             + stroke(d, 5.5) + taring(-lb * 0.45, y - 1, 12, 10, 1) + taring(lb * 0.45, y - 1, 12, 10, 1))
+        o = (f'<path d="{d}" fill="{MOUTH}"/><g clip-path="url(#{cid})"><path d="{lidah}" fill="{TONGUE}"/></g>'
+             + gores(d, 2.8 * k) + gigi(-lb * 0.5, -6, 8, 10) + gigi(lb * 0.5, -6, 8, 10))
     elif jenis == "o":
-        d = blob(0, y + 6, 13, 17, 15)
-        o = f'<path d="{d}" fill="{MOUTH}"/>' + stroke(d, 5.5)
+        o = gores(ubah_path(bulat(0, 2, 10, 13), f), 2.8 * k, INK, MOUTH)
     elif jenis == "sedih":
-        o = stroke(f"M -22 {y + 10} Q -10 {y - 4} 0 {y + 2} Q 10 {y - 4} 22 {y + 10}", 6)
+        o = g("M -20 8 Q -9 -6 0 0 Q 9 -6 20 8")
     elif jenis == "kecil":
-        o = stroke(f"M -8 {y + 4} Q 0 {y + 9} 8 {y + 4}", 5)
+        o = g("M -8 0 Q 0 6 8 0")
     elif jenis == "malu":
-        o = stroke(f"M -18 {y + 4} q 6 -6 12 0 q 6 6 12 0 q 6 -6 12 0", 5)
+        o = g("M -18 2 Q -12 -4 -6 2 Q 0 8 6 2 Q 12 -4 18 2")
     else:
         o = ""
-    K.raw(o)
+    K.tambah(o)
 
 
 def tetes(x, y, s, warna):
@@ -421,243 +247,195 @@ def tetes(x, y, s, warna):
          f"C {x + 13 * s} {y + 16 * s} {x + 7 * s} {y + 21 * s} {x} {y + 21 * s} "
          f"C {x - 7 * s} {y + 21 * s} {x - 13 * s} {y + 16 * s} {x - 13 * s} {y + 8 * s} "
          f"C {x - 13 * s} {y} {x - 4 * s} {y - 10 * s} {x} {y - 20 * s} Z")
-    return f'<path d="{d}" fill="{warna}" stroke="{INK}" stroke-width="4"/>'
+    return f'<path d="{d}" fill="{warna}" stroke="{INK}" stroke-width="{OL}"/>'
 
 
 def efek_wajah(K, daftar):
+    """Efek yang menempel di wajah (ikut miring bersama kepala)."""
     o = ""
     for e in daftar:
         if e == "merona":
-            o += "".join(f'<ellipse cx="{sx * 62}" cy="44" rx="18" ry="9" fill="{BLUSH}" opacity="0.75"/>'
-                         for sx in (-1, 1))
+            o += (f'<ellipse cx="552" cy="472" rx="28" ry="13" fill="{BLUSH}" opacity="0.7"/>'
+                  f'<ellipse cx="790" cy="462" rx="40" ry="17" fill="{BLUSH}" opacity="0.7"/>')
         elif e == "keringat":
-            o += tetes(98, -52, 1.2, WHITE)
+            o += tetes(585, 262, 1.9, WHITE)
         elif e == "air_mata":
-            o += tetes(-58, 50, 0.9, TEAR) + tetes(58, 56, 0.8, TEAR)
-        elif e == "urat":   # tanda marah
-            o += "".join(stroke(f"M {74 + a} {-74 + b} q {c} {d} {e2} {f}", 6, ANGER)
-                         for a, b, c, d, e2, f in ((0, 0, 8, 4, 10, 14), (24, 0, -8, 4, -10, 14),
-                                                    (0, 30, 8, -4, 10, -14), (24, 30, -8, -4, -10, -14)))
-        elif e == "seru":   # tanda seru
-            o += (f'<path d="M 128 -150 L 146 -150 L 141 -100 L 133 -100 Z" fill="{LIME}" stroke="{INK}" '
-                  f'stroke-width="4" stroke-linejoin="round"/>'
-                  f'<circle cx="137" cy="-84" r="8" fill="{LIME}" stroke="{INK}" stroke-width="4"/>')
-        elif e == "zzz":
-            for i, (x, y, s) in enumerate(((112, -118, 22), (142, -150, 28), (176, -188, 34))):
-                o += stroke(f"M {x} {y} l {s} 0 l {-s} {s} l {s} 0", 6, INK)
-                o += stroke(f"M {x} {y} l {s} 0 l {-s} {s} l {s} 0", 3, LIME)
+            o += tetes(548, 492, 1.2, TEAR) + tetes(770, 482, 1.6, TEAR)
+    K.tambah(o)
+
+
+def efek_melayang(daftar):
+    """Efek di sekitar kepala yang tidak ikut miring (huruf, tanda baca, hati).
+    Mengembalikan (svg, path batas)."""
+    o, kotak = "", ""
+    for e in daftar:
+        if e == "seru":
+            x, y = 345, 90
+            o += (f'<path d="M {x - 20} {y} L {x + 20} {y} L {x + 8} {y + 100} L {x - 8} {y + 100} Z" fill="{LIME}" '
+                  f'stroke="{INK}" stroke-width="{OL * 1.6}" stroke-linejoin="round"/>'
+                  f'<circle cx="{x}" cy="{y + 134}" r="16" fill="{LIME}" stroke="{INK}" stroke-width="{OL * 1.6}"/>')
+            kotak += f"M {x - 30} {y - 10} L {x + 30} {y + 160} "
         elif e == "tanya":
-            o += stroke("M 120 -128 Q 122 -160 146 -160 Q 170 -160 168 -138 Q 166 -122 146 -116 L 146 -100", 9)
-            o += stroke("M 120 -128 Q 122 -160 146 -160 Q 170 -160 168 -138 Q 166 -122 146 -116 L 146 -100", 4, LIME)
-            o += f'<circle cx="146" cy="-82" r="7" fill="{LIME}" stroke="{INK}" stroke-width="4"/>'
+            x, y = 345, 120
+            d = (f"M {x - 44} {y + 30} Q {x - 44} {y - 30} {x} {y - 30} Q {x + 46} {y - 30} {x + 44} {y + 14} "
+                 f"Q {x + 42} {y + 44} {x + 4} {y + 60} L {x + 4} {y + 92}")
+            o += gores(d, 26) + gores(d, 12, LIME)
+            o += f'<circle cx="{x + 4}" cy="{y + 132}" r="15" fill="{LIME}" stroke="{INK}" stroke-width="{OL * 1.6}"/>'
+            kotak += f"M {x - 60} {y - 46} L {x + 60} {y + 152} "
+        elif e == "zzz":
+            for (x, y), s in zip(((400, 200), (345, 120), (280, 25)), (44, 58, 74)):
+                d = f"M {x} {y} L {x + s} {y} L {x} {y + s} L {x + s} {y + s}"
+                o += gores(d, 22) + gores(d, 10, LIME)
+                kotak += f"M {x - 12} {y - 12} L {x + s + 12} {y + s + 12} "
         elif e == "hati":
-            for x, y, s in ((-150, -110, 1.0), (150, -140, 0.8)):
+            for x, y, s in ((360, 170, 2.4), (1040, 70, 1.8)):
                 d = (f"M {x} {y + 14 * s} C {x - 26 * s} {y - 4 * s} {x - 14 * s} {y - 26 * s} {x} {y - 12 * s} "
                      f"C {x + 14 * s} {y - 26 * s} {x + 26 * s} {y - 4 * s} {x} {y + 14 * s} Z")
-                o += f'<path d="{d}" fill="{BLUSH}" stroke="{INK}" stroke-width="4" stroke-linejoin="round"/>'
-    K.raw(o, "M -190 -200 L 190 -200" if o else None)
+                o += f'<path d="{d}" fill="{BLUSH}" stroke="{INK}" stroke-width="{OL * 1.4}" stroke-linejoin="round"/>'
+                kotak += f"M {x - 30 * s} {y - 26 * s} L {x + 30 * s} {y + 18 * s} "
+    return o, kotak
+
+
+EFEK_MELAYANG = ("seru", "tanya", "zzz", "hati")
 
 
 # ---------------------------------------------------------------------------
-# Ekspresi
+# 4. Ekspresi & pose
 # ---------------------------------------------------------------------------
+# "galak" = wajah asli dari gambar sumber. Ekspresi lain digambar di kepala polos:
+#   mata : bentuk "buka" (kelopak=(y sisi dalam, y sisi luar), lirik=(x, y) arah layar, pupil)
+#          atau "senang" / "tidur" / "tawa"; alis = 3 titik kurva dalam satuan mata
+#   mulut: seringai, senyum, tawa, o, sedih, kecil, malu
+#   efek : merona, keringat, air_mata, seru, tanya, zzz, hati
 EKSPRESI = {
-    "galak": dict(
-        mata=dict(bentuk="buka", kelopak=(-24, 4), lirik=(4, 8), pupil=14, bawah=True),
-        alis=((70, -36), (44, -30), (14, -8)), mulut="cemberut", efek=[],
-        ket="Galak – siap menjaga (seperti sketsa)"),
-    "senang": dict(
-        mata=dict(bentuk="senang"), alis=((64, -40), (44, -50), (20, -42)), mulut="senyum",
-        efek=["merona"], ket="Senang – menyapa duluan"),
-    "curiga": dict(
-        mata=dict(bentuk="buka", kelopak=(-4, -4), lirik=(12, 8), pupil=12, bawah=True),
-        alis=((66, -26), (44, -24), (18, -22)), mulut="seringai", efek=["keringat"],
-        ket="Curiga – teliti sampai rewel"),
-    "kaget": dict(
-        mata=dict(bentuk="buka", rx=30, ry=35, lirik=(0, 0), pupil=8),
-        alis=((66, -54), (44, -66), (20, -56)), mulut="o", efek=["seru"],
-        ket="Kaget"),
-    "sedih": dict(
-        mata=dict(bentuk="buka", kelopak=(4, -22), lirik=(0, 10), pupil=16, kilau=True),
-        alis=((66, -20), (44, -34), (18, -46)), mulut="sedih", efek=["air_mata"],
-        ket="Sedih"),
-    "ngantuk": dict(
-        mata=dict(bentuk="tidur"), alis=((64, -30), (44, -34), (20, -30)), mulut="kecil",
-        efek=["zzz"], ket="Ngantuk / tidur"),
-    "tertawa": dict(
-        mata=dict(bentuk="tawa"), alis=((64, -42), (44, -52), (20, -44)), mulut="tawa",
-        efek=["merona"], ket="Tertawa"),
-    "malu": dict(
-        mata=dict(bentuk="buka", kelopak=(-14, -20), lirik=(-12, 10), pupil=12, kilau=True),
-        alis=((64, -32), (44, -40), (20, -34)), mulut="malu", efek=["merona", "keringat"],
-        ket="Malu-malu"),
-    "bingung": dict(
-        mata=dict(bentuk="buka", kelopak=(-10, -30), lirik=(10, -6), pupil=12),
-        alis=((66, -34), (44, -44), (18, -36)), mulut="kecil", efek=["tanya"],
-        ket="Bingung / berpikir"),
-    "jatuh_cinta": dict(
-        mata=dict(bentuk="buka", lirik=(0, 2), pupil=16, kilau=True),
-        alis=((64, -44), (44, -54), (20, -46)), mulut="senyum", efek=["merona", "hati"],
-        ket="Terpesona"),
+    "galak": dict(asli=True, ket="Galak – wajah asli gambar sumber"),
+    "senang": dict(mata=dict(bentuk="senang", alis=((-22, -24), (2, -36), (26, -26))),
+                   mulut="senyum", efek=["merona"], ket="Senang – menyapa duluan"),
+    "curiga": dict(mata=dict(bentuk="buka", kelopak=(-6, -8), lirik=(14, 4), pupil=11,
+                             alis=((-30, -22), (0, -24), (30, -22))),
+                   mulut="seringai", efek=["keringat"], ket="Curiga – teliti sampai rewel"),
+    "kaget": dict(mata=dict(bentuk="buka", rx=30, ry=29, lirik=(0, 0), pupil=7,
+                            alis=((-22, -40), (2, -50), (26, -42))),
+                  mulut="o", efek=["seru"], ket="Kaget"),
+    "sedih": dict(mata=dict(bentuk="buka", kelopak=(-22, 0), lirik=(0, 8), pupil=14, kilau=True,
+                            alis=((-28, -40), (0, -34), (28, -18))),
+                  mulut="sedih", efek=["air_mata"], ket="Sedih"),
+    "ngantuk": dict(mata=dict(bentuk="tidur", alis=((-24, -22), (0, -26), (26, -22))),
+                    mulut="kecil", efek=["zzz"], ket="Ngantuk / tidur"),
+    "tertawa": dict(mata=dict(bentuk="tawa", alis=((-22, -28), (2, -38), (26, -30))),
+                    mulut="tawa", efek=["merona"], ket="Tertawa"),
+    "malu": dict(mata=dict(bentuk="buka", kelopak=(-16, -12), lirik=(-12, 8), pupil=12, kilau=True,
+                           alis=((-24, -30), (0, -36), (26, -28))),
+                 mulut="malu", efek=["merona", "keringat"], ket="Malu-malu"),
+    "bingung": dict(mata=dict(bentuk="buka", kelopak=(-24, -12), lirik=(8, -8), pupil=11,
+                              alis=((-24, -36), (0, -40), (26, -30))),
+                    mulut="kecil", efek=["tanya"], ket="Bingung / berpikir"),
+    "jatuh_cinta": dict(mata=dict(bentuk="buka", lirik=(0, 2), pupil=15, kilau=True,
+                                  alis=((-22, -36), (2, -46), (26, -38))),
+                        mulut="senyum", efek=["merona", "hati"], ket="Terpesona"),
 }
 
-
-def wajah(K, nama):
-    e = EKSPRESI[nama]
-    mata(K, e["mata"])
-    alis(K, e["alis"])
-    mulut(K, e["mulut"])
-    efek_wajah(K, e["efek"])
-
-
-# ---------------------------------------------------------------------------
-# Pose (koordinat relatif terhadap pinggul (0, 0); x negatif = kiri layar)
-#   lengan: [bahu, siku, pergelangan], tangan: (arah derajat, sebaran jari, curl)
-#   kaki  : [pinggul, lutut, pergelangan], telapak: (arah, sebaran, curl)
-# ---------------------------------------------------------------------------
+# Pose = sudut putar tiap bagian di sendinya (derajat, positif = searah jarum jam).
+#   kepala, lengan_n (kanan layar), lengan_k (kiri layar), kaki_k, ekor
+#   badan = (geser x, geser y, putar) untuk seluruh karakter
+#   depan = bagian yang digambar paling depan; gerak = garis gerak tambahan
 POSE = {
-    "siaga": dict(
-        dada=(0, -70), kepala=(0, -176), miring=-4,
-        lengan_k=[(-30, -66), (-100, -48), (-136, -2)], tangan_k=(105, 30, -1),
-        lengan_n=[(30, -66), (104, -84), (146, -44)], tangan_n=(70, 30, 1),
-        kaki_k=[(-30, 4), (-78, 40), (-88, 96)], telapak_k=(125, 34, -1),
-        kaki_n=[(30, 4), (82, 36), (98, 96)], telapak_n=(55, 34, 1),
-        ekor=[(26, 22), (104, 46), (150, 10), (164, -50)], depan=[],
-        ket="Siaga – kuda-kuda dengan cakar terbuka", ekspresi="galak"),
-    "melambai": dict(
-        dada=(0, -72), kepala=(-4, -180), miring=-6,
-        lengan_k=[(-30, -66), (-80, -30), (-98, 22)], tangan_k=(100, 26, -1),
-        lengan_n=[(30, -66), (120, -86), (172, -146)], tangan_n=(-65, 32, -1),
-        kaki_k=[(-30, 4), (-42, 50), (-48, 98)], telapak_k=(118, 34, -1),
-        kaki_n=[(30, 4), (42, 50), (48, 98)], telapak_n=(62, 34, 1),
-        ekor=[(-26, 22), (-100, 40), (-146, 14), (-160, -40)], depan=["n"], gerak="lambai",
-        ket="Melambai – menyapa duluan", ekspresi="senang"),
-    "lompat": dict(
-        dada=(0, -72), kepala=(0, -180), miring=0,
-        lengan_k=[(-30, -66), (-112, -104), (-168, -160)], tangan_k=(-125, 32, 1),
-        lengan_n=[(30, -66), (112, -104), (168, -160)], tangan_n=(-55, 32, -1),
-        kaki_k=[(-30, 4), (-74, 34), (-66, 82)], telapak_k=(140, 30, -1),
-        kaki_n=[(30, 4), (74, 34), (66, 82)], telapak_n=(40, 30, 1),
-        ekor=[(26, 22), (96, 56), (156, 46), (190, 0)], depan=[], gerak="lompat",
-        ket="Lompat kegirangan", ekspresi="tertawa"),
-    "berpikir": dict(
-        dada=(0, -72), kepala=(-8, -180), miring=-10,
-        lengan_k=[(-30, -66), (-80, -30), (-98, 22)], tangan_k=(100, 26, -1),
-        lengan_n=[(30, -66), (86, -24), (40, -70)], tangan_n=(-130, 22, -1),
-        kaki_k=[(-30, 4), (-42, 50), (-48, 98)], telapak_k=(118, 34, -1),
-        kaki_n=[(30, 4), (42, 50), (48, 98)], telapak_n=(62, 34, 1),
-        ekor=[(26, 22), (100, 44), (148, 22), (166, -30)], depan=["n"],
-        ket="Berpikir – tangan di dagu", ekspresi="bingung"),
-    "menunjuk": dict(
-        dada=(0, -72), kepala=(6, -180), miring=8,
-        lengan_k=[(-30, -66), (-80, -30), (-98, 22)], tangan_k=(100, 26, -1),
-        lengan_n=[(30, -66), (110, -82), (184, -92)], tangan_n=(-6, 16, 1),
-        kaki_k=[(-30, 4), (-46, 50), (-54, 98)], telapak_k=(122, 34, -1),
-        kaki_n=[(30, 4), (46, 50), (54, 98)], telapak_n=(58, 34, 1),
-        ekor=[(-26, 22), (-100, 40), (-146, 14), (-160, -40)], depan=[],
-        ket="Menunjuk – 'lihat ini!' (cocok untuk promosi)", ekspresi="senang"),
-    "duduk": dict(
-        dada=(0, -72), kepala=(0, -178), miring=-6,
-        lengan_k=[(-30, -66), (-74, -30), (-46, 4)], tangan_k=(40, 26, 1),
-        lengan_n=[(30, -66), (74, -30), (46, 4)], tangan_n=(140, 26, -1),
-        kaki_k=[(-30, 8), (-80, 34), (-126, 36)], telapak_k=(-115, 30, -1),
-        kaki_n=[(30, 8), (80, 34), (126, 36)], telapak_n=(-65, 30, 1),
-        ekor=[(20, 30), (100, 60), (190, 60), (226, 28)], depan=["k", "n"],
-        ket="Duduk santai", ekspresi="ngantuk"),
+    "siaga": dict(ket="Siaga – kuda-kuda dengan cakar terbuka (gambar sumber)", ekspresi="galak"),
+    "melambai": dict(lengan_n=-34, kepala=3, ekor=-6, gerak="lambai",
+                     ket="Melambai – menyapa duluan", ekspresi="senang"),
+    "sorak": dict(lengan_n=-36, lengan_k=34, kepala=-2, badan=(0, -30, 0), ekor=-10, gerak="lompat",
+                  ket="Bersorak – kedua cakar terangkat", ekspresi="tertawa"),
+    "menerkam": dict(lengan_n=-18, lengan_k=16, kepala=-5, badan=(0, 0, -4), ekor=8,
+                     ket="Menerkam – cakar terangkat, badan condong", ekspresi="galak"),
+    "termenung": dict(kepala=9, lengan_k=-10, ekor=10,
+                      ket="Termenung – kepala miring", ekspresi="bingung"),
+    "lesu": dict(kepala=10, lengan_k=-14, lengan_n=6, badan=(0, 8, 3), ekor=14,
+                 ket="Lesu – bahu turun, kepala tertunduk", ekspresi="ngantuk"),
 }
 
-LENGAN_W = [24, 23, 30]
-KAKI_W = [33, 28, 26]
+
+# ---------------------------------------------------------------------------
+# 5. Perakitan
+# ---------------------------------------------------------------------------
+def kepala_svg(K, ekspresi):
+    """Isi grup kepala: jiplakan asli, atau kepala polos + wajah ekspresi."""
+    e = EKSPRESI[ekspresi]
+    if e.get("asli"):
+        return svg_bagian("kepala")
+    k = Kanvas()
+    mata(k, e["mata"])
+    mulut(k, e["mulut"])
+    efek_wajah(k, e["efek"])
+    K.defs += k.defs
+    return svg_bagian("kepala_polos") + "".join(k.out)
 
 
-def gerak(K, jenis):
-    if jenis == "lambai":
-        o = ""
-        for d in ("M 240 -236 Q 258 -204 248 -172", "M 270 -254 Q 292 -208 278 -164"):
-            o += stroke(d, 10, INK) + stroke(d, 5, LIME)
-        K.raw(o, "M 240 -254 L 294 -164")
-    elif jenis == "lompat":
-        o = ""
-        for x in (-60, 0, 60):
-            o += stroke(f"M {x} 150 L {x} 190", 10, INK) + stroke(f"M {x} 150 L {x} 190", 5, LIME)
-        K.raw(o, "M -70 150 L 70 192")
+def efek_gerak(jenis):
+    garis = {"lambai": ("M 1290 150 Q 1330 210 1318 280", "M 1350 110 Q 1410 200 1388 300"),
+             "lompat": ("M 520 990 L 520 1060", "M 730 1010 L 730 1080", "M 940 990 L 940 1060")}[jenis]
+    return "".join(gores(d, 24) + gores(d, 11, LIME) for d in garis), " ".join(garis)
 
 
-def gambar(pose, ekspresi=None, K=None):
+def gambar(pose="siaga", ekspresi=None):
     p = POSE[pose]
     ekspresi = ekspresi or p["ekspresi"]
-    K = K or Kanvas()
-    hip = (0, 0)
-    chest = p["dada"]
+    K = Kanvas()
+    bx, by, bdeg = p.get("badan", (0, 0, 0))
 
-    def lengan(s):
-        sendi = p[f"lengan_{s}"]
-        a, spr, curl = p[f"tangan_{s}"]
-        anggota(K, sendi, LENGAN_W, a, spr, curl, 56, jari=3, panjang_jari=16, lebar_cakar=26, belok=70)
+    def seluruh(q):          # transformasi seluruh badan
+        q = putar(q, bdeg, PUSAT)
+        return (q[0] + bx, q[1] + by)
 
-    # urutan dari belakang ke depan: ekor, lengan, kaki, badan, kepala, lengan "depan"
-    ekor(K, p["ekor"], [26, 21, 13, 0])
-    for s in ("k", "n"):
-        if s not in p["depan"]:
-            lengan(s)
-    for s in ("k", "n"):
-        sendi = p[f"kaki_{s}"]
-        a, spr, curl = p[f"telapak_{s}"]
-        anggota(K, sendi, KAKI_W, a, spr, curl, 34, jari=3, panjang_jari=10, lebar_cakar=21, belok=40)
-    badan(K, hip, chest)
-    kepala(K, p["kepala"], p["miring"], ekspresi)
-    for s in p["depan"]:
-        lengan(s)
+    urutan = [n for n in URUTAN if n not in p.get("depan", [])] + p.get("depan", [])
+    isi = []
+    for nama in urutan:
+        deg = p.get(nama, 0) if nama in SENDI else 0
+        sendi = SENDI.get(nama, PUSAT)
+        g = kepala_svg(K, ekspresi) if nama == "kepala" else svg_bagian(nama)
+        if nama == "badan":
+            g = gores(ALAS, 2 * OL, INK, VIO_SH) + g
+        isi.append(f'<g transform="rotate({deg} {sendi[0]} {sendi[1]})">{g}</g>' if deg else g)
+        K.lacak(BAGIAN[nama]["siluet"], lambda q: seluruh(putar(q, deg, sendi)))
+    efek, kotak = efek_melayang([x for x in EKSPRESI[ekspresi].get("efek", []) if x in EFEK_MELAYANG])
     if p.get("gerak"):
-        gerak(K, p["gerak"])
+        g, k2 = efek_gerak(p["gerak"])
+        efek, kotak = efek + g, kotak + k2
+    if kotak:
+        K.lacak(kotak, seluruh)
+    K.tambah(f'<g transform="translate({bx} {by}) rotate({bdeg} {PUSAT[0]} {PUSAT[1]})">'
+             + "".join(isi) + efek + "</g>")
+    return K
+
+
+def kepala_saja(ekspresi):
+    K = Kanvas()
+    efek, kotak = efek_melayang([x for x in EKSPRESI[ekspresi].get("efek", []) if x in EFEK_MELAYANG])
+    # garis keliling siluet menutup tepi potongan leher, yang aslinya tanpa garis tinta
+    K.tambah(gores(BAGIAN["kepala"]["siluet"], 2 * OL) + kepala_svg(K, ekspresi) + efek,
+             BAGIAN["kepala"]["siluet"] + " " + kotak)
     return K
 
 
 # ---------------------------------------------------------------------------
-# Lembar & CLI
+# 6. Lembar & CLI
 # ---------------------------------------------------------------------------
-def lembar(items, kolom, sel=420, judul=True, kotak=None):
-    """Susun beberapa gambar (daftar (Kanvas, label)) dalam grid.
-    kotak=(x0, y0, x1, y1) memakai bingkai yang sama untuk semua sel (skala seragam)."""
+def lembar(items, kolom, sel=420, bingkai=None):
+    """Susun daftar (Kanvas, label) dalam grid. bingkai=(x, y, sisi) menyamakan skala semua sel."""
+    lab = 46
     baris = math.ceil(len(items) / kolom)
-    lab = 46 if judul else 0
     W, H = kolom * sel, baris * (sel + lab)
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}">',
            f'<rect width="{W}" height="{H}" fill="#F4EFFF"/>']
     for i, (K, label) in enumerate(items):
         x, y = (i % kolom) * sel, (i // kolom) * (sel + lab)
-        x0, y0, x1, y1 = kotak or K.box
-        pad = 0 if kotak else 20
-        x0, y0, x1, y1 = x0 - pad, y0 - pad, x1 + pad, y1 + pad
-        s = max(x1 - x0, y1 - y0)
-        x0 -= (s - (x1 - x0)) / 2
-        y0 -= (s - (y1 - y0)) / 2
-        out.append(f'<svg x="{x}" y="{y}" width="{sel}" height="{sel}" viewBox="{x0:.1f} {y0:.1f} {s:.1f} {s:.1f}">'
+        bx, by, bs = bingkai or K.bingkai(20)
+        out.append(f'<svg x="{x}" y="{y}" width="{sel}" height="{sel}" viewBox="{bx:.1f} {by:.1f} {bs:.1f} {bs:.1f}">'
                    f'{K.isi()}</svg>')
-        if judul:
-            out.append(f'<text x="{x + sel / 2}" y="{y + sel + 26}" text-anchor="middle" '
-                       f'font-family="Fredoka, \'Plus Jakarta Sans\', sans-serif" font-size="22" '
-                       f'font-weight="600" fill="{INK}">{label}</text>')
+        out.append(f'<text x="{x + sel / 2}" y="{y + sel + 26}" text-anchor="middle" '
+                   f'font-family="Fredoka, \'Plus Jakarta Sans\', sans-serif" font-size="22" '
+                   f'font-weight="600" fill="{INK}">{label}</text>')
     out.append("</svg>\n")
     return "".join(out)
-
-
-def kepala_saja(ekspresi):
-    K = Kanvas()
-    kepala(K, (0, 0), 0, ekspresi)
-    return K
-
-
-class _Unik:
-    """Setiap gambar dalam satu lembar butuh id clip yang berbeda."""
-    n = 0
-
-
-def baru():
-    K = Kanvas()
-    _Unik.n += 1
-    K.nid = _Unik.n * 100000
-    return K
 
 
 def simpan(path, teks, png=False):
@@ -679,9 +457,10 @@ def simpan(path, teks, png=False):
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Generator karakter Noia (SVG) dengan pose & ekspresi.")
     ap.add_argument("-p", "--pose", choices=POSE, help="pose / tingkah laku")
-    ap.add_argument("-e", "--ekspresi", choices=EKSPRESI, help="ekspresi wajah (bawaan: pasangan pose)")
-    ap.add_argument("-o", "--out", help="file keluaran (dengan -p)")
-    ap.add_argument("--semua", action="store_true", help="buat SEMUA kombinasi pose x ekspresi")
+    ap.add_argument("-e", "--ekspresi", choices=EKSPRESI,
+                    help="ekspresi wajah (bawaan: pasangan pose). Tanpa -p: kepala saja")
+    ap.add_argument("-o", "--out", help="file keluaran (dengan -p atau -e)")
+    ap.add_argument("--semua", action="store_true", help="buat semua kombinasi pose x ekspresi")
     ap.add_argument("--daftar", action="store_true", help="tampilkan daftar pose & ekspresi")
     ap.add_argument("--png", action="store_true", help="ekspor PNG juga (perlu cairosvg)")
     a = ap.parse_args(argv)
@@ -695,32 +474,24 @@ def main(argv=None):
             print(f"  {k:<12} {v['ket']}")
         return
 
-    folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "karakter")
+    folder = os.path.join(DI_SINI, "karakter")
     if a.pose:
-        K = gambar(a.pose, a.ekspresi, baru())
-        nama = f"{a.pose}_{a.ekspresi or POSE[a.pose]['ekspresi']}.svg"
-        simpan(a.out or os.path.join(folder, nama), K.svg(), a.png)
+        e = a.ekspresi or POSE[a.pose]["ekspresi"]
+        simpan(a.out or os.path.join(folder, f"{a.pose}_{e}.svg"), gambar(a.pose, e).svg(), a.png)
         return
     if a.ekspresi:
-        K = kepala_saja(a.ekspresi)
-        simpan(a.out or os.path.join(folder, f"kepala_{a.ekspresi}.svg"), K.svg(), a.png)
+        simpan(a.out or os.path.join(folder, f"kepala_{a.ekspresi}.svg"), kepala_saja(a.ekspresi).svg(), a.png)
         return
 
     kombinasi = ([(p, e) for p in POSE for e in EKSPRESI] if a.semua
                  else [(p, POSE[p]["ekspresi"]) for p in POSE])
     for p, e in kombinasi:
-        simpan(os.path.join(folder, f"{p}_{e}.svg"), gambar(p, e, baru()).svg(), a.png)
+        simpan(os.path.join(folder, f"{p}_{e}.svg"), gambar(p, e).svg(), a.png)
     simpan(os.path.join(folder, "lembar_pose.svg"),
-           lembar([(gambar(p, None, baru()), p) for p in POSE], 3), a.png)
+           lembar([(gambar(p), p) for p in POSE], 3), a.png)
     simpan(os.path.join(folder, "lembar_ekspresi.svg"),
-           lembar([(_kepala(e), e.replace("_", " ")) for e in EKSPRESI], 5, sel=300,
-                  kotak=(-215, -240, 215, 130)), a.png)
-
-
-def _kepala(e):
-    K = baru()
-    kepala(K, (0, 0), 0, e)
-    return K
+           lembar([(kepala_saja(e), e.replace("_", " ")) for e in EKSPRESI], 5, sel=300,
+                  bingkai=(260, -150, 840)), a.png)
 
 
 if __name__ == "__main__":
