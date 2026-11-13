@@ -44,6 +44,23 @@ def badge(size: int = 600, transparent: bool = False) -> Image.Image:
     return im if transparent else im.convert("RGB")
 
 
+ACCENT_COLORS = ["#120B1E", "#B26BFF", "#F2EEFE", "#F151A7"]
+
+
+def accent(size: int = 600) -> Image.Image:
+    """Wajah ungu di latar gelap dengan mata putih dan lidah merah muda yang sangat kecil
+    (sekitar 0,05% area): warna aksen yang harus tetap ada."""
+    s = size * SS
+    im = Image.new("RGB", (s, s), ACCENT_COLORS[0])
+    d = ImageDraw.Draw(im)
+    u = s / 100
+    d.ellipse([20 * u, 20 * u, 80 * u, 80 * u], fill=ACCENT_COLORS[1])
+    for x in (38, 62):
+        d.ellipse([(x - 7) * u, 35 * u, (x + 7) * u, 49 * u], fill=ACCENT_COLORS[2])
+    d.ellipse([48.5 * u, 63.5 * u, 51.5 * u, 65.5 * u], fill=ACCENT_COLORS[3])
+    return _finish(im, size)
+
+
 def lineart(size: int = 600) -> Image.Image:
     """Line-art: garis hitam tipis (sekitar 2 px pada ukuran akhir) di latar putih."""
     s = size * SS

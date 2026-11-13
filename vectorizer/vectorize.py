@@ -67,7 +67,11 @@ FLAT_GRADIENT = 6.0  # ΔE antar piksel tetangga; di bawah ini area dianggap rat
 SAMPLE_SIZE = 60_000  # jumlah piksel contoh untuk menentukan palet
 AUTO_MAX_COLORS = 24  # batas warna mode otomatis
 REDUCE_SAMPLE = 300_000  # piksel contoh untuk menghitung "kerusakan" saat menyederhanakan
+REDUCE_ACCENT_AREA = 0.01  # warna yang sangat berbeda dihitung seolah luasnya minimal 1%
 MISSING_DE = 28.0  # piksel sejauh ini dari palet (dan bukan campuran) = warna yang terlewat
+ACCENT_DE = 30.0  # warna aksen: sejauh ini dari semua warna palet ...
+ACCENT_SHARE = 0.0002  # ... cukup 0,02% area untuk dipertahankan (lidah, pipi, tanda kecil)
+MISSING_SAMPLE = 300_000  # sampel lebih besar supaya area 0,02% tetap terhitung andal
 BLEND_RGB = 18.0  # piksel sedekat ini (RGB) ke campuran dua warna palet = tepi anti-aliasing
 HALO_DE = 20.0  # warna "pita tipis" yang semirip ini dengan warna lain dianggap artefak tepi
 CORE_RATIO = 0.2  # porsi area yang harus tersisa setelah erosi agar warna dianggap "tebal"
@@ -252,7 +256,7 @@ def nearest(lab: np.ndarray, centers: np.ndarray) -> tuple[np.ndarray, np.ndarra
 
 
 def estimate_palette(rgb: np.ndarray, lab: np.ndarray, opaque: np.ndarray,
-                     detail: Detail) -> list[str]:
+                     detail: Detail) -> tuple[list[str], list[bool]]:
     mask = flat_pixels(lab, opaque)
     rgb_s, lab_s = rgb[mask], lab[mask]
     if len(lab_s) == 0:
@@ -295,11 +299,15 @@ def estimate_palette(rgb: np.ndarray, lab: np.ndarray, opaque: np.ndarray,
 
     # Garis tipis hampir tak punya "bagian dalam", jadi bisa terlewat di atas.
     rgb_all = rgb[opaque]
-    if len(rgb_all) > SAMPLE_SIZE:
-        rgb_all = rgb_all[np.random.default_rng(1).choice(len(rgb_all), SAMPLE_SIZE,
-                                                          replace=False)]
-    palette = add_missing_colors(rgb_all, palette, AUTO_MAX_COLORS, detail)
-    return [rgb_to_hex(c) for c in palette]
+
+    def pick(k: int, seed: int) -> np.ndarray:
+        if len(rgb_all) <= k:
+            return rgb_all
+        return rgb_all[np.random.default_rng(seed).choice(len(rgb_all), k, replace=False)]
+
+    palette, accents = add_missing_colors(pick(SAMPLE_SIZE, 1), pick(MISSING_SAMPLE, 3),
+                                          palette, AUTO_MAX_COLORS, detail)
+    return [rgb_to_hex(c) for c in palette], accents
 
 
 def blend_distance(points: np.ndarray, colors: np.ndarray) -> np.ndarray:
@@ -320,33 +328,55 @@ def blend_distance(points: np.ndarray, colors: np.ndarray) -> np.ndarray:
     return best
 
 
-def add_missing_colors(rgb_all: np.ndarray, palette: list[np.ndarray], max_colors: int,
-                       detail: Detail) -> list[np.ndarray]:
-    """Tambahkan warna yang dipakai banyak piksel tapi tidak dijelaskan palet.
+def add_missing_colors(rgb_all: np.ndarray, rgb_big: np.ndarray, palette: list[np.ndarray],
+                       max_colors: int, detail: Detail) -> tuple[list[np.ndarray], list[bool]]:
+    """Tambahkan warna yang tidak dijelaskan palet.
 
     Piksel dianggap sudah dijelaskan bila dekat dengan sebuah warna palet atau merupakan
-    campuran dua warna palet (tepi anti-aliasing). Sisanya dikelompokkan, lalu kelompok
-    yang paling jauh dari palet (inti garis, bukan gradasi tepinya) ditambahkan.
+    campuran dua warna palet (tepi anti-aliasing). Sisanya ditambahkan bila cukup banyak,
+    atau, untuk warna aksen yang sangat berbeda (lidah merah muda di wajah ungu), walau
+    areanya sangat kecil. Sisa piksel dikelompokkan, lalu kelompok yang paling jauh dari
+    palet (inti garis, bukan gradasi tepinya) ditambahkan.
+
+    `rgb_all` (sampel standar) dipakai untuk warna biasa; `rgb_big` (sampel besar) hanya
+    untuk warna aksen, supaya area 0,02% tetap terhitung andal.
+    Mengembalikan (palet, tanda aksen). Warna aksen hanya dipertahankan nanti bila berupa
+    bidang, bukan pita tipis di tepi (lihat drop_edge_artifacts).
     """
-    lab_all = to_lab(rgb_all.reshape(-1, 1, 3)).reshape(-1, 3)
+    samples = [(rgb_all, to_lab(rgb_all.reshape(-1, 1, 3)).reshape(-1, 3)),
+               (rgb_big, to_lab(rgb_big.reshape(-1, 1, 3)).reshape(-1, 3))]
     palette = list(palette)
+    accent_flags = [False] * len(palette)
+
+    def unexplained(rgb_s: np.ndarray, lab_s: np.ndarray, pal: np.ndarray, de: float):
+        _, d2 = nearest(lab_s, to_lab(pal.round().astype(np.uint8)))
+        far = np.flatnonzero(d2 > de**2)
+        if len(pal) >= 2 and len(far):
+            far = far[blend_distance(rgb_s[far], pal) > BLEND_RGB]
+        return far
+
     while len(palette) < max_colors:
         pal = np.array(palette, np.float32)
-        _, d2 = nearest(lab_all, to_lab(pal.round().astype(np.uint8)))
-        unexplained = d2 > MISSING_DE**2
-        if len(pal) >= 2:
-            unexplained &= blend_distance(rgb_all, pal) > BLEND_RGB
-        if unexplained.mean() < detail.min_share * 3:
-            break
-        out_lab = np.ascontiguousarray(lab_all[unexplained])
+        far = unexplained(*samples[0], pal, MISSING_DE)
+        if len(far) >= detail.min_share * 3 * len(samples[0][0]):
+            (rgb_s, lab_s), pool, is_accent = samples[0], far, False
+        else:
+            accent = unexplained(*samples[1], pal, ACCENT_DE)
+            if len(accent) < max(ACCENT_SHARE * len(samples[1][0]), 20):
+                break
+            (rgb_s, lab_s), pool, is_accent = samples[1], accent, True
+        mask = np.zeros(len(lab_s), bool)
+        mask[pool] = True
+        out_lab = np.ascontiguousarray(lab_s[mask])
         centers = kmeans(out_lab, 4)
         idx, _ = nearest(out_lab, centers)
         _, dc = nearest(centers, to_lab(pal.round().astype(np.uint8)))
         counts = np.bincount(idx, minlength=len(centers))
         big = counts >= 0.1 * len(out_lab)
         pick = int(np.argmax(np.where(big, dc, -1)))
-        palette.append(np.median(rgb_all[unexplained][idx == pick], axis=0))
-    return palette
+        palette.append(np.median(rgb_s[mask][idx == pick], axis=0))
+        accent_flags.append(is_accent)
+    return palette, accent_flags
 
 
 def refine_colors(rgb: np.ndarray, alpha: np.ndarray, palette: list[str],
@@ -404,10 +434,15 @@ def smooth_labels(labels: np.ndarray, n: int, sigma: float) -> np.ndarray:
 
 
 def drop_edge_artifacts(labels: np.ndarray, lab: np.ndarray, pal_rgb: np.ndarray,
-                        pal_lab: np.ndarray, thickness: float) -> tuple[np.ndarray, list[int]]:
+                        pal_lab: np.ndarray, thickness: float,
+                        accents: list[bool]) -> tuple[np.ndarray, list[int]]:
     """Buang warna yang hanya muncul sebagai pita tipis di tepi dan berupa artefak:
     mirip warna lain (ringing, chroma bleed JPEG) atau campuran dua warna lain
     (anti-aliasing).
+
+    Warna aksen (ditambahkan karena sangat berbeda walau areanya kecil) dibuang bila tidak
+    ada bagiannya yang cukup tebal untuk memuat lingkaran berdiameter 2 × `thickness`:
+    itu pita ringing JPEG, bukan lidah atau pipi merona.
 
     Piksel warna seperti itu dipindah ke warna tersisa yang paling mirip. Garis tipis yang
     kontras (mis. garis hitam di atas putih) tetap dipertahankan karena bukan keduanya.
@@ -424,8 +459,11 @@ def drop_edge_artifacts(labels: np.ndarray, lab: np.ndarray, pal_rgb: np.ndarray
         core = cv2.erode((labels == i).astype(np.uint8), kernel).sum()
         if core < CORE_RATIO * areas[i]:
             thin.append(i)
-    keep = [i for i in range(n) if areas[i] > 0 and i not in thin]
-    drop = []
+    weak = [i for i in range(n) if accents[i] and areas[i] > 0 and cv2.distanceTransform(
+        (labels == i).astype(np.uint8), cv2.DIST_L2, 3).max() < thickness]
+    thin = [i for i in thin if i not in weak]
+    keep = [i for i in range(n) if areas[i] > 0 and i not in thin and i not in weak]
+    drop = list(weak)
     for i in sorted(thin, key=lambda j: areas[j]):  # yang terkecil dulu
         others = keep + [t for t in thin if t not in drop and t != i]
         if not others:
@@ -456,7 +494,9 @@ def reduce_colors(labels: np.ndarray, lab: np.ndarray, pal_lab: np.ndarray,
     ke warna pengganti terbaiknya menambah selisih warna (ΔE) paling sedikit secara total:
     luas area × kenaikan selisih rata-rata. Jadi area kecil yang warnanya mirip tetangganya
     (kilau tipis, gradasi, warna kembar) dibuang lebih dulu, sedangkan area luas dan warna
-    yang sangat berbeda dipertahankan.
+    yang sangat berbeda dipertahankan. Warna yang sangat berbeda dari penggantinya
+    (ΔE ≥ ACCENT_DE, mis. lidah merah muda di wajah ungu) dihitung seolah luasnya
+    minimal REDUCE_ACCENT_AREA, karena detail kecil yang kontras paling mudah terlihat.
 
     Setiap area tersambung dari warna yang dibuang dipindah utuh ke satu warna pengganti,
     supaya bentuknya tetap rapi (tidak belang seperti bila tiap piksel dipindah sendiri).
@@ -478,7 +518,10 @@ def reduce_colors(labels: np.ndarray, lab: np.ndarray, pal_lab: np.ndarray,
             m = cur == i
             means = dist[m].mean(0)
             j = others[int(np.argmin(means[others]))]
-            cost = m.mean() * max(float(means[j] - dist[m, i].mean()), 0.0)
+            shift = max(float(means[j] - dist[m, i].mean()), 0.0)
+            distinct = np.linalg.norm(pal_lab[i] - pal_lab[j]) >= ACCENT_DE
+            area = max(m.mean(), REDUCE_ACCENT_AREA) if distinct else m.mean()
+            cost = area * shift
             if best is None or cost < best[0]:
                 best = (cost, i, j)
         _, i, j = best
@@ -598,10 +641,15 @@ def vectorize(rgb: np.ndarray, alpha: np.ndarray, opts: Options) -> Result:
     lab = to_lab(work_rgb)
 
     locked = opts.palette is not None
-    palette = opts.palette or estimate_palette(*palette_view(base, (w, h)), detail)
-    if not locked:
+    if locked:
+        palette, accents = list(opts.palette), [False] * len(opts.palette)
+    else:
+        palette, accents = estimate_palette(*palette_view(base, (w, h)), detail)
         # Hex asli dulu, baru label: label dari warna sementara menggeser batas tepi.
-        palette = list(dict.fromkeys(refine_colors(rgb, alpha, palette, detail)))
+        refined: dict[str, bool] = {}
+        for c, a in zip(refine_colors(rgb, alpha, palette, detail), accents, strict=True):
+            refined[c] = refined.get(c, True) and a
+        palette, accents = list(refined), list(refined.values())
     n = len(palette)
     transparent = n
     pal_lab = to_lab(np.array([hex_to_rgb(c) for c in palette], np.uint8))
@@ -611,7 +659,7 @@ def vectorize(rgb: np.ndarray, alpha: np.ndarray, opts: Options) -> Result:
     if not locked:
         pal_rgb0 = np.array([hex_to_rgb(c) for c in palette], np.float32)
         labels, kept = drop_edge_artifacts(labels, lab, pal_rgb0, pal_lab,
-                                           detail.thickness * scale)
+                                           detail.thickness * scale, accents)
         if len(kept) < n:
             labels, palette = compact(labels, palette, kept)
     sigma = detail.edge_sigma * scale

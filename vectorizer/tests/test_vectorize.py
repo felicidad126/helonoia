@@ -62,6 +62,16 @@ def test_svg_keeps_original_size():
     assert root.get("viewBox") == f"0 0 {result.work_size[0]} {result.work_size[1]}"
 
 
+def test_small_distinct_accent_color_is_kept():
+    image = samples.accent(600)
+    pink = np.asarray(image).reshape(-1, 3)
+    share = (np.abs(pink.astype(int) - v.hex_to_rgb(samples.ACCENT_COLORS[3])).sum(1) < 30).mean()
+    assert share < 0.001  # memang sangat kecil
+    result, rgb, alpha = run(image)
+    assert matched(result.palette, samples.ACCENT_COLORS, 3) == samples.ACCENT_COLORS
+    assert len(result.palette) == len(samples.ACCENT_COLORS)
+
+
 def test_lineart_keeps_thin_lines():
     result, rgb, alpha = run(samples.lineart(400))
     assert len(result.palette) == 2

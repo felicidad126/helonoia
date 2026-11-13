@@ -96,6 +96,7 @@ Warna dibuang satu per satu. Setiap kali, yang dibuang adalah warna yang paling 
 
 - Yang dibuang lebih dulu: warna kembar, kilau tipis, area gradasi kecil, dan artefak JPEG.
 - Yang dipertahankan: area yang luas, dan warna yang sangat berbeda walaupun areanya kecil. Contohnya, pada logo Helonoia dengan `-c 4`, lime (1,3% area) tetap ada, sedangkan lilac perut (2,3%, mirip ungu) dilebur.
+- Warna yang sangat berbeda dari penggantinya (ΔE ≥ 30) dihitung seolah luasnya minimal 1%. Jadi detail kecil yang kontras, seperti lidah merah muda (0,03% area), tidak ikut terbuang paling awal.
 
 Setiap area dari warna yang dibuang dipindah utuh ke satu warna pengganti, jadi bentuknya tetap rapi dan tidak belang.
 
@@ -127,6 +128,7 @@ Kenapa tidak bisa 100% sama (1:1)? Pada ilustrasi di atas, 94% selisih yang ters
 3. **Palet**, ditaksir pada resolusi standar (2000 px) karena di sana ambangnya disetel; pada resolusi lebih tinggi noise JPEG ikut membesar dan terlihat seperti warna tersendiri.
    - Warna diambil dari bagian dalam area yang rata, bukan dari tepinya: dipecah jadi banyak cluster (k-means di ruang warna Lab), lalu yang hampir sama digabung.
    - Warna yang terlewat, misalnya garis tipis, ditambahkan bila bukan campuran anti-aliasing dua warna yang sudah ada.
+   - Warna aksen yang sangat berbeda (ΔE > 30 dari semua warna lain) tetap ditambahkan walau hanya 0,02% area, misalnya lidah merah muda di wajah ungu. Agar ringing JPEG tidak ikut masuk, warna aksen hanya dipertahankan bila ada bagiannya yang cukup tebal (memuat lingkaran berdiameter sekitar 5 px), bukan sekadar pita tipis di tepi.
 4. **Warna akhir dari gambar asli.** Bila sebagian besar piksel bernilai persis sama (PNG bersih), hex itu yang dipakai, jadi `#B26BFF` tetap `#B26BFF`. Ini dilakukan sebelum piksel diberi warna, karena warna yang meleset sedikit saja sudah menggeser letak tepi.
 5. **Beri warna tiap piksel, lalu buang artefak tepi.** Warna yang hanya muncul sebagai pita tipis di tepi dan mirip warna lain (ringing atau chroma bleed JPEG), atau merupakan campuran dua warna lain, dilebur ke warna yang paling mirip.
 6. **Haluskan tepi.** Setiap piksel ikut warna yang paling dominan di sekitarnya.
