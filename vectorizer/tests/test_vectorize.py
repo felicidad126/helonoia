@@ -212,6 +212,23 @@ def test_fast_mode_same_palette_and_keeps_thin_outline():
     assert v.similarity(fast, rgb, alpha)[0] > 33
 
 
+def test_gradient_soft_shadow():
+    image = samples.shadow(400)
+    flat, rgb, alpha = run(image)
+    grad, _, _ = run(image, gradients=True)
+    assert flat.gradients == 0
+    assert grad.gradients == 1
+    assert grad.paths < flat.paths  # pita-pita bayangan jadi satu bentuk bergradasi
+    assert "radialGradient" in grad.svg or "linearGradient" in grad.svg
+    assert v.similarity(grad, rgb, alpha)[1] <= v.similarity(flat, rgb, alpha)[1]
+
+
+@pytest.mark.parametrize("make", [lambda: samples.badge(400), lambda: samples.lineart(400)])
+def test_gradient_not_used_on_flat_images(make):
+    result, _, _ = run(make(), gradients=True)
+    assert result.gradients == 0
+
+
 def test_fully_transparent_image_fails_cleanly():
     from PIL import Image
     with pytest.raises(ValueError):

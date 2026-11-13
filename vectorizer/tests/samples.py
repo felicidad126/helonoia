@@ -61,6 +61,26 @@ def accent(size: int = 600) -> Image.Image:
     return _finish(im, size)
 
 
+SHADOW_COLORS = ["#0D081C", "#B362FA", "#2D1459"]  # latar, karakter, inti bayangan
+
+
+def shadow(size: int = 600) -> Image.Image:
+    """Karakter flat (lingkaran ungu) di atas bayangan elips yang memudar lembut ke latar."""
+    import numpy as np
+    s = size
+    yy, xx = np.mgrid[0:s, 0:s].astype(np.float64) + 0.5
+    r = np.sqrt(((xx - 0.5 * s) / (0.32 * s)) ** 2 + ((yy - 0.78 * s) / (0.06 * s)) ** 2)
+    fade = np.clip(1 - r, 0, 1) ** 1.5
+    bg = np.array([int(SHADOW_COLORS[0][i:i + 2], 16) for i in (1, 3, 5)], np.float64)
+    core = np.array([int(SHADOW_COLORS[2][i:i + 2], 16) for i in (1, 3, 5)], np.float64)
+    img = bg + (core - bg) * fade[..., None]
+    im = Image.fromarray(img.round().astype(np.uint8), "RGB").resize((s * SS, s * SS))
+    d = ImageDraw.Draw(im)
+    u = s * SS / 100
+    d.ellipse([35 * u, 25 * u, 65 * u, 72 * u], fill=SHADOW_COLORS[1])
+    return _finish(im, size)
+
+
 def lineart(size: int = 600) -> Image.Image:
     """Line-art: garis hitam tipis (sekitar 2 px pada ukuran akhir) di latar putih."""
     s = size * SS
