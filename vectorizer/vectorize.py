@@ -23,7 +23,7 @@ import io
 import sys
 import time
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import cv2
@@ -77,8 +77,13 @@ GRADIENT_MIN_RANGE = 10.0  # dan benar-benar berubah: rentang warna stop minimal
 GRADIENT_INLIER_DE = 12.0  # piksel yang lebih jauh dari gradasi = bentuk lain di atasnya
 GRADIENT_MIN_INLIERS = 0.85  # porsi piksel area yang harus cocok dengan gradasi
 GRADIENT_FEATHER = 8  # bayangan/glow: area diperluas sejauh ini ke latar (piksel asli)
-GRADIENT_FEATHER_STEP = 20.0  # bayangan memudar lebih cepat: lompatan antar stop maksimal ini
-GRADIENT_STOPS = 16
+FEATHER_LAYERS = 8  # jumlah lapisan pudar per bayangan
+FEATHER_MIN_WIDTH = 2.8  # lebar pudar rata-rata minimal (piksel asli); anti-aliasing ~1-2 px
+FEATHER_OFF_AXIS_RGB = 8.0  # 90% piksel harus berupa campuran latar→inti (satu warna memudar)
+FEATHER_OUTLIER_RGB = 20.0  # piksel sejauh ini dari campuran itu = bentuk lain di atasnya
+FEATHER_SURROUND = 0.7  # porsi sekeliling yang harus satu warna latar
+FEATHER_GAIN = 0.85  # lapisan dipakai bila selisihnya ≤ 85% selisih pita warna rata
+GRADIENT_STOPS = 8
 GRADIENT_SAMPLE = 40_000
 MISSING_DE = 28.0  # piksel sejauh ini dari palet (dan bukan campuran) = warna yang terlewat
 ACCENT_DE = 30.0  # warna aksen: sejauh ini dari semua warna palet ...
@@ -132,6 +137,7 @@ class Result:
     removed_bg: str | None
     found_colors: int  # jumlah warna sebelum disederhanakan
     gradients: int  # jumlah area yang diisi gradasi
+    feathers: int  # jumlah bayangan lembut (lapisan pudar bertingkat)
     debug_image: Image.Image  # gambar berlabel yang dilacak VTracer
 
 
@@ -609,6 +615,15 @@ class Gradient:
     stops: list[tuple[float, str, float]]  # (offset 0..1, hex, opacity)
 
 
+@dataclass
+class Feather:
+    """Bayangan/glow lembut: lapisan bertingkat satu warna dengan opasitas bertahap."""
+    color: str
+    origin: tuple[int, int]  # (x, y) pojok potongan, piksel kerja
+    layers: list  # [(opasitas, mask bool)], dari terluar ke terdalam
+    elements: list = field(default_factory=list)  # path SVG hasil pelacakan lapisan
+
+
 def fill_holes(mask: np.ndarray) -> np.ndarray:
     contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL,
                                    cv2.CHAIN_APPROX_SIMPLE)
@@ -675,7 +690,7 @@ def gradient_t(kind: str, geom, xy: np.ndarray) -> np.ndarray:
     return np.clip(((xy - (x1, y1)) @ u) / max(float(u @ u), 1e-9), 0, 1)
 
 
-def fit_gradient(xy, shape_xy, rgb_px, lab_px, max_step: float = GRADIENT_MAX_STEP):
+def fit_gradient(xy, shape_xy, rgb_px, lab_px):
     """Model gradasi terbaik: (rata-rata ΔE, jenis, geometri, offset, warna, ΔE per piksel)."""
     best = None
     for kind, geom, t in gradient_models(xy, shape_xy, lab_px):
@@ -685,7 +700,7 @@ def fit_gradient(xy, shape_xy, rgb_px, lab_px, max_step: float = GRADIENT_MAX_ST
         offsets, colors, pred = prof
         # Perubahan bertahap saja: pupil hitam di tengah putih mata bukan gradasi.
         stops_lab = to_lab(colors.round().clip(0, 255).astype(np.uint8))
-        if np.sqrt((np.diff(stops_lab, axis=0) ** 2).sum(-1)).max() > max_step:
+        if np.sqrt((np.diff(stops_lab, axis=0) ** 2).sum(-1)).max() > GRADIENT_MAX_STEP:
             continue
         spread = stops_lab[:, None] - stops_lab[None]
         if np.sqrt((spread ** 2).sum(-1)).max() < GRADIENT_MIN_RANGE:
@@ -711,8 +726,8 @@ def fade_stops(offsets, colors, bg_rgb) -> list[tuple[float, str, float]]:
     return stops
 
 
-def find_gradients(labels: np.ndarray, lab: np.ndarray, rgb: np.ndarray, pal_lab: np.ndarray,
-                   n: int, scale: float, removed_rgb) -> tuple[np.ndarray, list[Gradient]]:
+def find_gradients(labels: np.ndarray, lab: np.ndarray, rgb: np.ndarray, pal_rgb: np.ndarray,
+                   n: int, scale: float, removed_rgb) -> tuple[np.ndarray, list]:
     """Cari area yang lebih cocok diisi gradasi daripada bidang-bidang warna rata.
 
     Setiap area (beserta pita-pita di dalamnya) dicoba diisi gradasi elips atau linear yang
@@ -722,6 +737,7 @@ def find_gradients(labels: np.ndarray, lab: np.ndarray, rgb: np.ndarray, pal_lab
     n + 1 + k (n = transparan).
     """
     h, w = labels.shape
+    pal_lab = to_lab(pal_rgb.round().astype(np.uint8))
     min_px = GRADIENT_MIN_AREA * max(scale, 1) ** 2
     max_px = GRADIENT_MAX_SHARE * h * w
 
@@ -782,7 +798,7 @@ def find_gradients(labels: np.ndarray, lab: np.ndarray, rgb: np.ndarray, pal_lab
 
     used = np.zeros(labels.shape, bool)
     labels = labels.copy()
-    gradients: list[Gradient] = []
+    gradients: list[Gradient | Feather] = []
     er = max(1, round(1.5 * max(scale, 1)))
     edge_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * er + 1, 2 * er + 1))
     rng = np.random.default_rng(4)
@@ -790,16 +806,16 @@ def find_gradients(labels: np.ndarray, lab: np.ndarray, rgb: np.ndarray, pal_lab
     def sample(count: int, size: int) -> np.ndarray:
         return np.arange(size) if size <= count else rng.choice(size, count, replace=False)
 
-    def try_fit(xy, shape_xy, sy, sx, max_step=GRADIENT_MAX_STEP):
+    def try_fit(xy, shape_xy, sy, sx):
         """Cocokkan gradasi; kembalikan fit bila lolos semua syarat."""
         lab_px, rgb_px = lab[sy, sx], rgb[sy, sx].astype(np.float64)
-        fit = fit_gradient(xy, shape_xy, rgb_px, lab_px, max_step)
+        fit = fit_gradient(xy, shape_xy, rgb_px, lab_px)
         if fit is None:
             return None
         inl = fit[5] < GRADIENT_INLIER_DE
         if inl.mean() < GRADIENT_MIN_INLIERS:
             return None
-        fit = fit_gradient(xy[inl], shape_xy, rgb_px[inl], lab_px[inl], max_step)
+        fit = fit_gradient(xy[inl], shape_xy, rgb_px[inl], lab_px[inl])
         if fit is None:
             return None
         # Pembanding: warna rata terbaik untuk tiap bagian (median pikselnya sendiri),
@@ -813,16 +829,15 @@ def find_gradients(labels: np.ndarray, lab: np.ndarray, rgb: np.ndarray, pal_lab
             return None
         return fit
 
-    def fit_pixels(ys: np.ndarray, xs: np.ndarray, shape_xy: np.ndarray,
-                   max_step: float = GRADIENT_MAX_STEP):
+    def fit_pixels(ys: np.ndarray, xs: np.ndarray, shape_xy: np.ndarray):
         """Saring cepat dengan sampel kecil (kebanyakan area memang rata), lalu cocokkan."""
         quick = sample(3_000, len(xs))
         if try_fit(np.column_stack([xs[quick] + 0.5, ys[quick] + 0.5]), shape_xy,
-                   ys[quick], xs[quick], max_step) is None:
+                   ys[quick], xs[quick]) is None:
             return None
         pick = sample(GRADIENT_SAMPLE, len(xs))
         return try_fit(np.column_stack([xs[pick] + 0.5, ys[pick] + 0.5]), shape_xy,
-                       ys[pick], xs[pick], max_step)
+                       ys[pick], xs[pick])
 
     def residual(fit, ys: np.ndarray, xs: np.ndarray) -> np.ndarray:
         _, kind, geom, offsets, colors, _ = fit
@@ -847,36 +862,92 @@ def find_gradients(labels: np.ndarray, lab: np.ndarray, rgb: np.ndarray, pal_lab
         # lain di atasnya). Tepi ikut supaya tidak tersisa cincin warna lama.
         return fit, (y0, x0), group, ~(inner[gy, gx] & (err >= GRADIENT_INLIER_DE))
 
-    def feather_fit(group, x0, y0):
-        """Bentuk yang tepinya memudar ke latar (bayangan, glow): area diperluas ke latar
-        di sekelilingnya dan gradasi dicocokkan sampai memudar ke warna latar."""
+    def feather_layers(group, x0, y0):
+        """Bentuk yang tepinya memudar ke latar (bayangan, glow).
+
+        Kepekatan tiap piksel (0 = latar, 1 = inti) diukur langsung dari gambar asli, lalu
+        dibagi menjadi FEATHER_LAYERS kontur bertingkat. Lebar pudar boleh berbeda di tiap
+        sisi (ujung bayangan memudar panjang, sisi atas-bawahnya pendek). Bentuk bertepi
+        tajam ditolak: transisinya hanya selebar anti-aliasing.
+        """
         m = max(2, round(GRADIENT_FEATHER * max(scale, 1)))
         gh, gw = group.shape
         fx0, fy0 = max(x0 - m, 0), max(y0 - m, 0)
         fx1, fy1 = min(x0 + gw + m, w), min(y0 + gh + m, h)
-        gmask = np.zeros((fy1 - fy0, fx1 - fx0), np.uint8)
+        gmask = np.zeros((fy1 - fy0, fx1 - fx0), bool)
         gmask[y0 - fy0:y0 - fy0 + gh, x0 - fx0:x0 - fx0 + gw] = group
         disk = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * m + 1, 2 * m + 1))
-        ring = cv2.dilate(gmask, disk).astype(bool) & ~gmask.astype(bool)
+        ring = cv2.dilate(gmask.astype(np.uint8), disk).astype(bool) & ~gmask
         lab_crop = labels[fy0:fy1, fx0:fx1]
         ring &= ~used[fy0:fy1, fx0:fx1] & (lab_crop < n)
         if not ring.any():
             return None
         values, counts = np.unique(lab_crop[ring], return_counts=True)
-        surround = values[counts.argmax()]
-        if counts.max() < 0.8 * ring.sum():
+        surround = int(values[counts.argmax()])
+        if counts.max() < FEATHER_SURROUND * ring.sum():
             return None  # bukan di atas satu latar
-        region = gmask.astype(bool) | (ring & (lab_crop == surround))
-        ys, xs = np.nonzero(region)
-        # Elips mengikuti bentuk inti; perluasan ke latar hanya untuk menilai pudarnya.
-        cy, cx = np.nonzero(gmask)
-        shape_xy = np.column_stack([cx + fx0 + 0.5, cy + fy0 + 0.5])[sample(20_000, len(cx))]
-        fit = fit_pixels(ys + fy0, xs + fx0, shape_xy, GRADIENT_FEATHER_STEP)
-        if fit is None:
+        region = gmask | (ring & (lab_crop == surround))
+        bg = pal_rgb[surround].astype(np.float64)
+        px = rgb[fy0:fy1, fx0:fx1].astype(np.float64)
+        dist = np.linalg.norm(px - bg, axis=-1)
+        core = np.median(px[gmask & (dist >= np.percentile(dist[gmask], 70))], axis=0)
+        axis = core - bg
+        if np.linalg.norm(to_lab(core.round().astype(np.uint8))
+                          - to_lab(bg.round().astype(np.uint8))) < GRADIENT_MIN_RANGE:
             return None
-        err = residual(fit, ys + fy0, xs + fx0)
-        # Latar yang tidak ikut memudar tetap latar; bagian area sendiri ikut semuanya.
-        return fit, (fy0, fx0), region, gmask[ys, xs].astype(bool) | (err < GRADIENT_INLIER_DE)
+        a = np.clip(((px - bg) @ axis) / (axis @ axis), 0, 1)
+        off_axis = np.linalg.norm(px - (bg + a[..., None] * axis), axis=-1)
+        other = gmask & (off_axis > FEATHER_OUTLIER_RGB)  # bentuk lain di dalam bayangan
+        if other.sum() > 0.3 * gmask.sum():
+            return None
+        region &= ~other
+        a = cv2.GaussianBlur(a, (0, 0), 0.5 * max(scale, 1))
+        a[other] = 1.0  # tertutup bentuk lain; lapisan dibuat penuh di bawahnya
+        # Di tepi bentuk lain yang menumpang (karakter di atas bayangan), piksel campuran
+        # tidak bisa dibaca kepekatannya: lanjutkan mulus dari sekitarnya. Lapisan tidak
+        # dipanjangkan ke bawah bentuk itu, karena urutan tumpukannya belum tentu di atas.
+        covered = ~region & ~other & (lab_crop != surround)
+        unsure = (cv2.dilate(covered.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0) & region
+        a[~region & ~other] = 0.0
+        if unsure.any():
+            a8 = cv2.inpaint((a * 255).round().astype(np.uint8),
+                             (unsure | covered).astype(np.uint8), 3, cv2.INPAINT_TELEA)
+            a = np.where(unsure, a8 / 255.0, a)
+        reach = region | other
+        if np.percentile(off_axis[region], 90) > FEATHER_OFF_AXIS_RGB:
+            return None  # bukan satu warna yang memudar ke latar
+        solid = (a >= 0.5) & (region | other)
+        speck = max(4, round(2 * max(scale, 1))) ** 2
+        mid = region & (a > 0.15) & (a < 0.85)
+        contours, _ = cv2.findContours(solid.astype(np.uint8), cv2.RETR_EXTERNAL,
+                                       cv2.CHAIN_APPROX_NONE)
+        perim = sum(cv2.arcLength(c, True) for c in contours)
+        if mid.sum() / max(perim, 1.0) / max(scale, 1) < FEATHER_MIN_WIDTH:
+            return None  # tepinya tajam, bukan memudar
+        k = FEATHER_LAYERS
+        level = np.floor(a * k + 0.5) / k
+        pred = bg + level[..., None] * axis
+        lab_r = lab[fy0:fy1, fx0:fx1][region]
+        err = np.sqrt(((to_lab(pred[region].round().clip(0, 255).astype(np.uint8)) - lab_r) ** 2)
+                      .sum(-1)).mean()
+        part = lab_crop[region]
+        best_flat = np.zeros_like(lab_r)
+        for lb in np.unique(part):
+            best_flat[part == lb] = np.median(lab_r[part == lb], axis=0)
+        flat_err = np.sqrt(((best_flat - lab_r) ** 2).sum(-1)).mean()
+        if err > FEATHER_GAIN * flat_err:
+            return None
+        # Lapisan j menutup kepekatan >= (j - 0,5)/k; opasitasnya dipilih supaya tumpukan
+        # lapisan 1..j menghasilkan kepekatan j/k (lapisan terdalam penuh).
+        layers, prev = [], 0.0
+        for j in range(1, k + 1):
+            target = 1.0 if j == k else j / k
+            opacity = 1 - (1 - target) / (1 - prev)
+            layers.append((opacity, clean_mask((a >= (j - 0.5) / k) & reach, speck)))
+            prev = target
+        feather = Feather(color=rgb_to_hex(core), origin=(fx0, fy0), layers=layers)
+        # Label: inti jadi penanda (urutan tumpukan), sisanya kembali ke latar.
+        return feather, (fy0, fx0), region | other, solid, surround
 
     for _, (x0, y0, x1, y1), filled in cands:
         crop = labels[y0:y1, x0:x1]
@@ -888,8 +959,14 @@ def find_gradients(labels: np.ndarray, lab: np.ndarray, rgb: np.ndarray, pal_lab
         inner = cv2.erode(group.astype(np.uint8), edge_kernel).astype(bool)
         found = interior_fit(group, inner, shape_xy, x0, y0)
         if found is None:
-            found = feather_fit(group, x0, y0)
-        if found is None:
+            soft = feather_layers(group, x0, y0)
+            if soft is not None:
+                feather, (fy0, fx0), region, solid, surround = soft
+                view = labels[fy0:fy0 + region.shape[0], fx0:fx0 + region.shape[1]]
+                view[region & ~solid] = surround
+                view[solid & region] = n + 1 + len(gradients)
+                used[fy0:fy0 + region.shape[0], fx0:fx0 + region.shape[1]] |= region
+                gradients.append(feather)
             continue
         fit, (fy0, fx0), region, keep = found
         _, kind, geom, offsets, colors, _ = fit
@@ -906,6 +983,19 @@ def find_gradients(labels: np.ndarray, lab: np.ndarray, rgb: np.ndarray, pal_lab
         gradients.append(Gradient(kind=kind, geometry=tuple(float(v) for v in geom),
                                   stops=stops))
     return labels, gradients
+
+
+def clean_mask(mask: np.ndarray, min_area: int) -> np.ndarray:
+    """Buang bercak dan lubang yang lebih kecil dari `min_area` piksel."""
+    out = mask.copy()
+    for target in (True, False):
+        k, cc, stats, _ = cv2.connectedComponentsWithStats((out == target).astype(np.uint8),
+                                                           connectivity=8)
+        small = np.flatnonzero(stats[:, cv2.CC_STAT_AREA] < min_area)
+        small = small[small > 0]
+        if len(small):
+            out[np.isin(cc, small)] = not target
+    return out
 
 
 def inside_parts(crop: np.ndarray, filled: np.ndarray, n: int) -> np.ndarray:
@@ -995,6 +1085,20 @@ def trace(rgba: np.ndarray, opts: Options, detail: Detail, scale: float) -> str:
     )
 
 
+def trace_mask(mask: np.ndarray, opts: Options, detail: Detail, scale: float) -> list:
+    """Lacak satu mask (mis. satu lapisan bayangan) menjadi elemen path SVG."""
+    rgba = np.zeros(mask.shape + (4,), np.uint8)
+    rgba[mask] = (0, 0, 0, 255)
+    if not mask.any():
+        return []
+    root = ET.fromstring(trace(rgba, opts, detail, scale))
+    out = []
+    for el in root.iter(f"{{{SVG_NS}}}path"):
+        el.attrib.pop("fill", None)
+        out.append(el)
+    return out
+
+
 def path_labels(svg: str, labels: np.ndarray, n_labels: int) -> list[int | None]:
     """Label yang diwakili tiap path: label terbanyak di piksel yang terlihat dari path itu.
 
@@ -1019,6 +1123,17 @@ def path_labels(svg: str, labels: np.ndarray, n_labels: int) -> list[int | None]
     return [int(c.argmax()) if c.sum() else None for c in counts]
 
 
+def feather_group(f: Feather) -> ET.Element:
+    g = ET.Element(f"{{{SVG_NS}}}g", {"transform": f"translate({f.origin[0]},{f.origin[1]})"})
+    for (opacity, _), elements in zip(f.layers, f.elements, strict=True):
+        for el in elements:
+            el.set("fill", f.color)
+            if opacity < 0.999:
+                el.set("fill-opacity", f"{opacity:.3f}")
+            g.append(el)
+    return g
+
+
 def clean_svg(svg: str, palette_rgb: np.ndarray, palette_hex: list[str],
               size: tuple[int, int], work: tuple[int, int],
               fills: list | None = None) -> tuple[str, int]:
@@ -1034,10 +1149,15 @@ def clean_svg(svg: str, palette_rgb: np.ndarray, palette_hex: list[str],
     root.set("viewBox", f"0 0 {work[0]} {work[1]}")
     pal_lab = to_lab(palette_rgb.astype(np.uint8))
     defs = ET.Element(f"{{{SVG_NS}}}defs")
-    paths = 0
+    swaps: list[tuple[ET.Element, ET.Element | None]] = []
+    placed: set[int] = set()
     for i, el in enumerate(root.iter(f"{{{SVG_NS}}}path")):
-        paths += 1
         known = fills[i] if fills and i < len(fills) else None
+        if isinstance(known, Feather):
+            # Penanda bayangan diganti lapisan-lapisannya, di posisi tumpukan yang sama.
+            swaps.append((el, None if id(known) in placed else feather_group(known)))
+            placed.add(id(known))
+            continue
         if isinstance(known, Gradient):
             tx, ty = parse_translate(el.get("transform"))
             gid = f"g{len(defs)}"
@@ -1051,8 +1171,17 @@ def clean_svg(svg: str, palette_rgb: np.ndarray, palette_hex: list[str],
         if fill and fill.startswith("#"):
             lab = to_lab(np.array(hex_to_rgb(fill), np.uint8))
             el.set("fill", palette_hex[int(np.argmin(((pal_lab - lab) ** 2).sum(-1)))])
+    children = list(root)
+    for el, repl in swaps:
+        if repl is None:
+            root.remove(el)
+        else:
+            root.insert(children.index(el), repl)
+            root.remove(el)
+            children = list(root)
     if len(defs):
         root.insert(0, defs)
+    paths = sum(1 for _ in root.iter(f"{{{SVG_NS}}}path"))
     body = ET.tostring(root, encoding="unicode")
     header = '<?xml version="1.0" encoding="UTF-8"?>\n<!-- Dibuat dengan Helonoia Vectorizer -->\n'
     return header + body + "\n", paths
@@ -1127,8 +1256,11 @@ def vectorize(rgb: np.ndarray, alpha: np.ndarray, opts: Options) -> Result:
 
     grads: list[Gradient] = []
     if opts.gradients and cairosvg is not None:  # pemetaan path→gradasi butuh render
-        labels, grads = find_gradients(labels, lab, work_rgb, to_lab(pal_rgb.astype(np.uint8)),
-                                       n, scale, hex_to_rgb(removed) if removed else None)
+        labels, grads = find_gradients(labels, lab, work_rgb, pal_rgb, n, scale,
+                                       hex_to_rgb(removed) if removed else None)
+        for f in grads:
+            if isinstance(f, Feather):
+                f.elements = [trace_mask(mask, opts, detail, scale) for _, mask in f.layers]
     marks = marker_colors(len(grads), pal_rgb)
 
     lut = np.zeros((n + 1 + len(grads), 4), np.uint8)
@@ -1147,7 +1279,9 @@ def vectorize(rgb: np.ndarray, alpha: np.ndarray, opts: Options) -> Result:
     svg, paths = clean_svg(raw, used_rgb, used_hex, (w, h), (ww, wh), fills)
     return Result(svg=svg, palette=used_hex, shares=shares, paths=paths, size=(w, h),
                   work_size=(ww, wh), removed_bg=removed, found_colors=found,
-                  gradients=len(grads), debug_image=Image.fromarray(rgba, "RGBA"))
+                  gradients=sum(isinstance(g, Gradient) for g in grads),
+                  feathers=sum(isinstance(g, Feather) for g in grads),
+                  debug_image=Image.fromarray(rgba, "RGBA"))
 
 
 # ---------------------------------------------------------------------------
@@ -1254,8 +1388,8 @@ def build_parser() -> argparse.ArgumentParser:
                         "tepi (default) = hanya area yang tersambung ke pinggir; "
                         "semua = juga area berwarna sama di dalam objek, mis. lubang huruf O")
     p.add_argument("--gradasi", action="store_true",
-                   help="eksperimental: isi area bergradasi (shading halus, bayangan lembut) "
-                        "dengan gradasi SVG, bukan pita-pita warna rata")
+                   help="eksperimental: shading halus diisi gradasi SVG dan bayangan lembut "
+                        "dibuat dari lapisan pudar bertingkat, bukan pita-pita warna rata")
     p.add_argument("--cepat", action="store_true",
                    help="sekitar 3× lebih cepat dengan bentuk sedikit kurang teliti "
                         "(resolusi kerja 2000 px, bukan 4000 px)")
@@ -1321,6 +1455,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  palet {len(result.palette)} warna{note}: {colors}")
         if result.gradients:
             print(f"  {result.gradients} area diisi gradasi")
+        if result.feathers:
+            print(f"  {result.feathers} bayangan lembut (lapisan pudar)")
         if result.removed_bg:
             print(f"  latar {result.removed_bg} dihapus")
         line = f"  {result.paths} path · {len(result.svg.encode()) / 1024:.0f} KB"

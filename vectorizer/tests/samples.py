@@ -81,6 +81,23 @@ def shadow(size: int = 600) -> Image.Image:
     return _finish(im, size)
 
 
+def soft_shadow(size: int = 600) -> Image.Image:
+    """Bayangan elips berinti rata dengan tepi blur (seperti bayangan lantai di lembar
+    karakter), di latar gelap, dengan karakter flat di atasnya."""
+    from PIL import ImageFilter
+    s = size
+    bg = SHADOW_COLORS[0]
+    im = Image.new("RGB", (s, s), bg)
+    mask = Image.new("L", (s, s), 0)
+    ImageDraw.Draw(mask).ellipse([0.15 * s, 0.72 * s, 0.85 * s, 0.84 * s], fill=255)
+    mask = mask.filter(ImageFilter.GaussianBlur(0.012 * s))
+    im.paste(Image.new("RGB", (s, s), SHADOW_COLORS[2]), (0, 0), mask)
+    big = im.resize((s * SS, s * SS))
+    u = s * SS / 100
+    ImageDraw.Draw(big).ellipse([38 * u, 25 * u, 62 * u, 70 * u], fill=SHADOW_COLORS[1])
+    return _finish(big, size)
+
+
 def lineart(size: int = 600) -> Image.Image:
     """Line-art: garis hitam tipis (sekitar 2 px pada ukuran akhir) di latar putih."""
     s = size * SS

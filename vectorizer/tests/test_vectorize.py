@@ -223,10 +223,20 @@ def test_gradient_soft_shadow():
     assert v.similarity(grad, rgb, alpha)[1] <= v.similarity(flat, rgb, alpha)[1]
 
 
+def test_soft_shadow_becomes_feather_layers():
+    image = samples.soft_shadow(400)
+    flat, rgb, alpha = run(image)
+    soft, _, _ = run(image, gradients=True)
+    assert flat.feathers == 0
+    assert soft.feathers == 1
+    assert "fill-opacity" in soft.svg
+    assert v.similarity(soft, rgb, alpha)[1] <= v.similarity(flat, rgb, alpha)[1]
+
+
 @pytest.mark.parametrize("make", [lambda: samples.badge(400), lambda: samples.lineart(400)])
 def test_gradient_not_used_on_flat_images(make):
     result, _, _ = run(make(), gradients=True)
-    assert result.gradients == 0
+    assert result.gradients == 0 and result.feathers == 0
 
 
 def test_fully_transparent_image_fails_cleanly():
