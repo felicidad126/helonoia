@@ -9,7 +9,7 @@ Halaman perkenalan brand **Helonoia** beserta aset mereknya: maskot, logo, dan i
 | [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) | Deploy otomatis `HTML/` ke server setiap push ke `main`. Cara menyiapkannya: [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md#update-otomatis-cicd). |
 | [`helonoia/`](helonoia/) | Generator maskot dan logo (`helonoia_monster.py`) beserta hasilnya. |
 | [`helonoia/ikon/`](helonoia/ikon/) | Ikon untuk bagian "Empat kebiasaan kami". |
-| [`vectorizer/riset/`](vectorizer/riset/) | Riset vektorisasi gambar (raster → SVG): kompetitor, library, dan uji coba VTracer. Mulai dari [`RISET-VEKTORISASI.md`](vectorizer/riset/RISET-VEKTORISASI.md). |
+| [`vectorizer/`](vectorizer/) | Script CLI internal untuk mengubah logo dan ilustrasi flat (PNG/JPG) menjadi SVG. Cara pakai: [`vectorizer/README.md`](vectorizer/README.md); riset di baliknya: [`vectorizer/riset/`](vectorizer/riset/RISET-VEKTORISASI.md). |
 
 ## Halaman brand
 

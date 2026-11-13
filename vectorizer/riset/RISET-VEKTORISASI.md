@@ -4,6 +4,8 @@ Tanggal riset: 13 November 2026 · Branch: `Vectorizer`
 
 Tujuan: memahami cara kerja vektorisasi, apa yang ditawarkan kompetitor, dan bahan apa yang bisa kita pakai untuk membuat script atau tool vektorisasi sendiri.
 
+> **Status:** MVP sudah dibuat sebagai script CLI internal untuk logo dan ilustrasi flat. Lihat [`../README.md`](../README.md).
+
 ---
 
 ## 1. Ringkasan
