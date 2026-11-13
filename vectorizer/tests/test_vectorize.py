@@ -90,10 +90,38 @@ def test_badge_jpeg_ignores_compression_artifacts():
     assert result.paths < 40
 
 
-def test_badge_jpeg_fixed_colors():
+def test_colors_drops_jpeg_artifact_first():
     dirty = samples.as_jpeg(samples.badge(600), 300, 50)
     result, _, _ = run(dirty, colors=5)
     assert len(result.palette) == 5
+    assert result.found_colors == 6
+    assert matched(result.palette, samples.BADGE_COLORS[:4], 5) == samples.BADGE_COLORS[:4]
+
+
+def test_colors_keeps_large_and_distinct_colors():
+    # Garis tepi tipis (2,5% area) dibuang lebih dulu daripada bidang besar.
+    result, _, _ = run(samples.badge(400), colors=4)
+    assert matched(result.palette, samples.BADGE_COLORS[:4], 2) == samples.BADGE_COLORS[:4]
+
+
+@pytest.mark.skipif(not LOGO.exists(), reason="logo Helonoia tidak ada")
+def test_colors_keeps_small_but_distinct_color():
+    # Lime hanya 1,3% area tapi sangat berbeda; lilac 2,3% tapi mirip ungu.
+    rgb, alpha = v.load_image(LOGO)
+    result = v.vectorize(rgb, alpha, v.Options(colors=4))
+    assert set(result.palette) == {"#120B1E", "#B26BFF", "#F4EFFF", "#C6FF3D"}
+
+
+def test_colors_more_than_found_keeps_all():
+    result, _, _ = run(samples.badge(300), colors=9)
+    assert len(result.palette) == result.found_colors == 5
+
+
+def test_cli_reports_simplification(tmp_path, capsys):
+    src = tmp_path / "logo.png"
+    samples.badge(200).save(src)
+    assert v.main([str(src), "-c", "3"]) == 0
+    assert "palet 3 warna (disederhanakan dari 5)" in capsys.readouterr().out
 
 
 def test_lineart_jpeg():

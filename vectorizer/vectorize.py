@@ -50,6 +50,8 @@ WORK_SIZE = 2000  # sisi terpanjang gambar saat diproses (piksel)
 MAX_UPSCALE = 4.0
 FLAT_GRADIENT = 6.0  # ΔE antar piksel tetangga; di bawah ini area dianggap rata
 SAMPLE_SIZE = 60_000  # jumlah piksel contoh untuk menentukan palet
+AUTO_MAX_COLORS = 24  # batas warna mode otomatis
+REDUCE_SAMPLE = 300_000  # piksel contoh untuk menghitung "kerusakan" saat menyederhanakan
 MISSING_DE = 28.0  # piksel sejauh ini dari palet (dan bukan campuran) = warna yang terlewat
 BLEND_RGB = 18.0  # piksel sedekat ini (RGB) ke campuran dua warna palet = tepi anti-aliasing
 HALO_DE = 20.0  # warna "pita tipis" yang semirip ini dengan warna lain dianggap artefak tepi
@@ -79,8 +81,7 @@ DETAILS = {
 
 @dataclass
 class Options:
-    colors: int | None = None  # None = otomatis
-    max_colors: int = 16
+    colors: int | None = None  # paling banyak sekian warna (None = sebanyak yang ditemukan)
     palette: list[str] | None = None  # palet terkunci (hex)
     detail: str = "medium"
     stacking: str = "stacked"  # "stacked" atau "cutout"
@@ -96,6 +97,7 @@ class Result:
     size: tuple[int, int]  # (lebar, tinggi) asli
     work_size: tuple[int, int]
     removed_bg: str | None
+    found_colors: int  # jumlah warna sebelum disederhanakan
     debug_image: Image.Image  # gambar berlabel yang dilacak VTracer
 
 
@@ -205,7 +207,7 @@ def nearest(lab: np.ndarray, centers: np.ndarray) -> tuple[np.ndarray, np.ndarra
     return idx, best
 
 
-def estimate_palette(rgb: np.ndarray, lab: np.ndarray, opaque: np.ndarray, opts: Options,
+def estimate_palette(rgb: np.ndarray, lab: np.ndarray, opaque: np.ndarray,
                      detail: Detail) -> list[str]:
     mask = flat_pixels(lab, opaque)
     rgb_s, lab_s = rgb[mask], lab[mask]
@@ -216,17 +218,10 @@ def estimate_palette(rgb: np.ndarray, lab: np.ndarray, opaque: np.ndarray, opts:
         rgb_s, lab_s = rgb_s[pick], lab_s[pick]
     lab_s = np.ascontiguousarray(lab_s, np.float32)
 
-    if opts.colors:
-        centers = kmeans(lab_s, opts.colors)
-        idx, _ = nearest(lab_s, centers)
-        groups = [(int((idx == i).sum()), i) for i in range(len(centers))]
-        return [rgb_to_hex(np.median(rgb_s[idx == i], axis=0))
-                for count, i in sorted(groups, reverse=True) if count > 0]
-
-    # Otomatis: sengaja pecah jadi banyak cluster, lalu gabungkan yang hampir sama.
+    # Sengaja pecah jadi banyak cluster, lalu gabungkan yang hampir sama.
     # Cara ini menemukan warna kecil (mis. garis Ungu Tua 0,5% area) yang terlewat bila
     # jumlah cluster dinaikkan satu per satu, karena k-means mengutamakan area besar.
-    centers = kmeans(lab_s, max(opts.max_colors, 16))
+    centers = kmeans(lab_s, AUTO_MAX_COLORS)
     idx, _ = nearest(lab_s, centers)
     clusters = [[float((idx == i).sum()), centers[i].astype(np.float64), [i]]
                 for i in range(len(centers)) if (idx == i).any()]
@@ -235,7 +230,7 @@ def estimate_palette(rgb: np.ndarray, lab: np.ndarray, opaque: np.ndarray, opts:
         d = np.sqrt(((cs[:, None] - cs[None]) ** 2).sum(-1))
         np.fill_diagonal(d, np.inf)
         a, b = np.unravel_index(d.argmin(), d.shape)
-        if d[a, b] >= detail.merge_de and len(clusters) <= opts.max_colors:
+        if d[a, b] >= detail.merge_de:
             break
         (wa, ca, ia), (wb, cb, ib) = clusters[a], clusters[b]
         clusters[a] = [wa + wb, (ca * wa + cb * wb) / (wa + wb), ia + ib]
@@ -252,7 +247,7 @@ def estimate_palette(rgb: np.ndarray, lab: np.ndarray, opaque: np.ndarray, opts:
     if len(rgb_all) > SAMPLE_SIZE:
         rgb_all = rgb_all[np.random.default_rng(1).choice(len(rgb_all), SAMPLE_SIZE,
                                                           replace=False)]
-    palette = add_missing_colors(rgb_all, palette, opts.max_colors, detail)
+    palette = add_missing_colors(rgb_all, palette, AUTO_MAX_COLORS, detail)
     return [rgb_to_hex(c) for c in palette]
 
 
@@ -402,6 +397,63 @@ def drop_edge_artifacts(labels: np.ndarray, lab: np.ndarray, pal_rgb: np.ndarray
     return labels, keep
 
 
+def reduce_colors(labels: np.ndarray, lab: np.ndarray, pal_lab: np.ndarray,
+                  target: int) -> tuple[np.ndarray, list[int]]:
+    """Sederhanakan jadi `target` warna dengan total selisih warna sekecil mungkin.
+
+    Warna dibuang satu per satu. Setiap kali, yang dibuang adalah warna yang bila dilebur
+    ke warna pengganti terbaiknya menambah selisih warna (ΔE) paling sedikit secara total:
+    luas area × kenaikan selisih rata-rata. Jadi area kecil yang warnanya mirip tetangganya
+    (kilau tipis, gradasi, warna kembar) dibuang lebih dulu, sedangkan area luas dan warna
+    yang sangat berbeda dipertahankan.
+
+    Setiap area tersambung dari warna yang dibuang dipindah utuh ke satu warna pengganti,
+    supaya bentuknya tetap rapi (tidak belang seperti bila tiap piksel dipindah sendiri).
+    Mengembalikan (label baru, indeks warna yang dipertahankan).
+    """
+    n = len(pal_lab)
+    flat = labels.ravel()
+    idx = np.flatnonzero(flat < n)
+    if len(idx) > REDUCE_SAMPLE:
+        idx = np.random.default_rng(2).choice(idx, REDUCE_SAMPLE, replace=False)
+    cur = flat[idx].copy()
+    pts = lab.reshape(-1, 3)[idx]
+    dist = np.stack([np.sqrt(((pts - c) ** 2).sum(-1)) for c in pal_lab], axis=1)
+    alive = [i for i in range(n) if (cur == i).any()]
+    while len(alive) > max(target, 1):
+        best = None
+        for i in alive:
+            others = [j for j in alive if j != i]
+            m = cur == i
+            means = dist[m].mean(0)
+            j = others[int(np.argmin(means[others]))]
+            cost = m.mean() * max(float(means[j] - dist[m, i].mean()), 0.0)
+            if best is None or cost < best[0]:
+                best = (cost, i, j)
+        _, i, j = best
+        cur[cur == i] = j
+        alive.remove(i)
+
+    removed = [i for i in range(n) if i not in alive and (labels == i).any()]
+    if not removed:
+        return labels, alive
+    comp = np.zeros(labels.shape, np.int32)
+    count = 0
+    for i in removed:
+        m = labels == i
+        k, cc = cv2.connectedComponents(m.astype(np.uint8), connectivity=8)
+        comp[m] = cc[m] + count
+        count += k - 1
+    gone = comp > 0
+    ids = comp[gone] - 1
+    px = lab[gone]
+    sums = np.stack([np.bincount(ids, weights=np.sqrt(((px - pal_lab[j]) ** 2).sum(-1)),
+                                 minlength=count) for j in alive], axis=1)
+    labels = labels.copy()
+    labels[gone] = np.asarray(alive)[sums.argmin(1)][ids]
+    return labels, alive
+
+
 def compact(labels: np.ndarray, palette: list[str], keep: list[int]):
     """Sisakan warna `keep` saja dengan indeks rapat 0..len(keep)-1 (urutan `keep`).
 
@@ -507,14 +559,14 @@ def vectorize(rgb: np.ndarray, alpha: np.ndarray, opts: Options) -> Result:
     lab = to_lab(work_rgb)
 
     locked = opts.palette is not None
-    palette = opts.palette or estimate_palette(work_rgb, lab, opaque, opts, detail)
+    palette = opts.palette or estimate_palette(work_rgb, lab, opaque, detail)
     n = len(palette)
     transparent = n
     pal_lab = to_lab(np.array([hex_to_rgb(c) for c in palette], np.uint8))
 
     labels, _ = nearest(lab, pal_lab)
     labels[~opaque] = transparent
-    if not locked and not opts.colors:
+    if not locked:
         pal_rgb0 = np.array([hex_to_rgb(c) for c in palette], np.float32)
         labels, kept = drop_edge_artifacts(labels, lab, pal_rgb0, pal_lab,
                                            detail.thickness * scale)
@@ -523,10 +575,19 @@ def vectorize(rgb: np.ndarray, alpha: np.ndarray, opts: Options) -> Result:
     if not locked:
         palette = refine_colors(rgb, alpha, palette, detail)
         labels, palette = merge_duplicates(labels, palette)
+    sigma = detail.edge_sigma * scale
+    labels = smooth_labels(labels, len(palette) + 1, sigma)
+    present = [i for i in range(len(palette)) if (labels == i).any()]
+    labels, palette = compact(labels, palette, present)
+    found = len(palette)
+    if not locked and opts.colors and len(palette) > opts.colors:
+        pal_lab = to_lab(np.array([hex_to_rgb(c) for c in palette], np.uint8))
+        labels, kept = reduce_colors(labels, lab, pal_lab, opts.colors)
+        labels, palette = compact(labels, palette, kept)
+        labels = smooth_labels(labels, len(palette) + 1, sigma)
     n = len(palette)
     transparent = n
     pal_rgb = np.array([hex_to_rgb(c) for c in palette], np.float32)
-    labels = smooth_labels(labels, n + 1, detail.edge_sigma * scale)
 
     removed = None
     if opts.remove_bg:
@@ -556,7 +617,7 @@ def vectorize(rgb: np.ndarray, alpha: np.ndarray, opts: Options) -> Result:
     raw = trace(rgba, opts, detail, scale)
     svg, paths = clean_svg(raw, used_rgb, used_hex, (w, h), (ww, wh))
     return Result(svg=svg, palette=used_hex, shares=shares, paths=paths, size=(w, h),
-                  work_size=(ww, wh), removed_bg=removed,
+                  work_size=(ww, wh), removed_bg=removed, found_colors=found,
                   debug_image=Image.fromarray(rgba, "RGBA"))
 
 
@@ -647,12 +708,12 @@ def build_parser() -> argparse.ArgumentParser:
                    help="file .svg (untuk satu input) atau folder. Default: di sebelah file input")
     color = p.add_mutually_exclusive_group()
     color.add_argument("-c", "--colors", type=int,
-                       help="jumlah warna tetap. Default: ditentukan otomatis")
+                       help="sederhanakan jadi paling banyak N warna; yang dibuang lebih dulu "
+                            "adalah warna yang paling sedikit pengaruhnya pada tampilan. "
+                            "Default: semua warna yang ditemukan")
     color.add_argument("-p", "--palette",
                        help="kunci warna ke palet: 'helonoia' atau daftar hex, "
                             "mis. '#120B1E,#B26BFF,#FFFFFF'")
-    p.add_argument("--max-colors", type=int, default=16,
-                   help="batas warna untuk mode otomatis (default 16)")
     p.add_argument("-d", "--detail", choices=list(DETAILS), default="medium",
                    help="low = lebih halus dan sederhana, high = lebih banyak detail "
                         "(default medium)")
@@ -681,9 +742,7 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError(f"format tidak dikenal: {', '.join(bad) or '(kosong)'}")
         if args.colors is not None and not 1 <= args.colors <= 64:
             raise ValueError("--colors harus antara 1 dan 64")
-        if not 1 <= args.max_colors <= 64:
-            raise ValueError("--max-colors harus antara 1 dan 64")
-        opts = Options(colors=args.colors, max_colors=args.max_colors,
+        opts = Options(colors=args.colors,
                        palette=parse_palette(args.palette) if args.palette else None,
                        detail=args.detail, stacking=args.stacking, remove_bg=args.remove_bg)
         files = collect_inputs(args.inputs)
@@ -717,7 +776,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  ukuran {w}×{h}, diproses {ww}×{wh}")
         colors = " ".join(f"{c} {s * 100:.1f}%" for c, s in zip(result.palette, result.shares,
                                                                 strict=True))
-        print(f"  palet {len(result.palette)} warna: {colors}")
+        note = ""
+        if opts.colors and result.found_colors > opts.colors:
+            note = f" (disederhanakan dari {result.found_colors})"
+        elif opts.colors and result.found_colors < opts.colors:
+            note = f" (hanya ditemukan {result.found_colors})"
+        print(f"  palet {len(result.palette)} warna{note}: {colors}")
         if result.removed_bg:
             print(f"  latar {result.removed_bg} dihapus")
         line = f"  {result.paths} path · {len(result.svg.encode()) / 1024:.0f} KB"

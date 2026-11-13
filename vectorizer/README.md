@@ -48,8 +48,8 @@ python3 vectorizer/vectorize.py wordmark.png --remove-bg semua
 # Kunci ke warna brand klien
 python3 vectorizer/vectorize.py logo.jpg -p "#1D3557,#E63946,#FFFFFF"
 
-# Paksa tepat 3 warna
-python3 vectorizer/vectorize.py logo.jpg -c 3
+# Sederhanakan jadi paling banyak 6 warna
+python3 vectorizer/vectorize.py ilustrasi.png -c 6
 ```
 
 ## Opsi
@@ -57,9 +57,8 @@ python3 vectorizer/vectorize.py logo.jpg -c 3
 | Opsi | Fungsi |
 | --- | --- |
 | `-o`, `--output` | File `.svg` (untuk satu input) atau folder. Default: di sebelah file input. |
-| `-c`, `--colors N` | Jumlah warna tetap. Default: ditentukan otomatis. |
+| `-c`, `--colors N` | Sederhanakan jadi paling banyak N warna. Warna yang dibuang lebih dulu adalah yang paling sedikit pengaruhnya pada tampilan. Default: semua warna yang ditemukan. Lihat [Menyederhanakan warna](#menyederhanakan-warna). |
 | `-p`, `--palette` | Kunci warna ke palet: `helonoia` atau daftar hex dipisah koma. Setiap piksel diberi warna palet yang paling mirip. |
-| `--max-colors N` | Batas warna untuk mode otomatis (default 16). |
 | `-d`, `--detail` | `low`, `medium` (default), atau `high`. Lihat tabel di bawah. |
 | `--stacking` | `stacked` (default): bentuk bertumpuk, aman dari celah tipis. `cutout`: bentuk saling memotong dan tidak bertumpuk, cocok untuk cutting/engraving. |
 | `--remove-bg` | Buat latar transparan. Latar = warna yang menguasai pinggir gambar. Default (`tepi`): hanya area yang tersambung ke pinggir yang dibuang, jadi warna yang sama di dalam objek (mis. mulut maskot) tetap ada. `--remove-bg semua`: semua area berwarna latar dibuang, termasuk lubang huruf seperti O dan A. |
@@ -78,11 +77,27 @@ python3 vectorizer/vectorize.py logo.jpg -c 3
 | Masalah | Coba |
 | --- | --- |
 | Muncul warna yang tidak ada di desain asli | `-c N` dengan jumlah warna yang benar, atau `-p` dengan warna asli |
+| Terlalu banyak warna atau path (ilustrasi dengan shading lembut) | `-c N`, mulai dari jumlah warna yang dilaporkan lalu turunkan |
 | Detail kecil (pupil, garis tipis) hilang | `-d high` |
 | Tepi masih bergerigi atau bernoda | `-d low` |
 | Dua warna yang mirip tergabung | `-d high`, atau `-p` dengan kedua warna itu |
 | Ada celah tipis antar bentuk di Illustrator | Pastikan `--stacking stacked` (default) |
 | Lubang huruf (O, A, B) masih berwarna latar setelah `--remove-bg` | `--remove-bg semua` |
+
+## Menyederhanakan warna
+
+Ilustrasi dengan shading lembut (kilau tepi, gradasi, bayangan bertingkat) bisa menghasilkan banyak warna yang mirip satu sama lain, dan setiap warna menambah path. `-c N` menyederhanakan hasil default menjadi paling banyak N warna.
+
+Warna dibuang satu per satu. Setiap kali, yang dibuang adalah warna yang paling sedikit menambah selisih warna bila pikselnya dipindah ke warna tersisa yang paling mirip (luas area × kenaikan selisih warna). Akibatnya:
+
+- Yang dibuang lebih dulu: warna kembar, kilau tipis, area gradasi kecil, dan artefak JPEG.
+- Yang dipertahankan: area yang luas, dan warna yang sangat berbeda walaupun areanya kecil. Contohnya, pada logo Helonoia dengan `-c 4`, lime (1,3% area) tetap ada, sedangkan lilac perut (2,3%, mirip ungu) dilebur.
+
+Setiap area dari warna yang dibuang dipindah utuh ke satu warna pengganti, jadi bentuknya tetap rapi dan tidak belang.
+
+Contoh pada ilustrasi monster dengan shading lembut: default 14 warna dan 526 path; `-c 10` menjadi 202 path dengan kemiripan hampir sama (PSNR 26,5 dB, default 26,6 dB). Laporan menyebut berapa warna awalnya, misalnya `palet 10 warna (disederhanakan dari 14)`, supaya mudah memilih angka berikutnya.
+
+Kalau warna tertentu harus tetap ada (warna brand), pakai `-p` untuk menguncinya.
 
 ## Cara kerja
 
@@ -94,6 +109,7 @@ python3 vectorizer/vectorize.py logo.jpg -c 3
 4. **Buang artefak tepi.** Warna yang hanya muncul sebagai pita tipis di tepi dan mirip warna lain (ringing atau chroma bleed JPEG), atau merupakan campuran dua warna lain, dilebur ke warna yang paling mirip.
 5. **Warna akhir dari gambar asli.** Bila sebagian besar piksel bernilai persis sama (PNG bersih), hex itu yang dipakai, jadi `#B26BFF` tetap `#B26BFF`.
 6. **Haluskan tepi.** Setiap piksel ikut warna yang paling dominan di sekitarnya.
+   Dengan `-c N`, warna lalu disederhanakan (lihat di atas) dan tepinya dihaluskan sekali lagi.
 7. **Lacak dengan [VTracer](https://github.com/visioncortex/vtracer)**, lalu kunci setiap `fill` ke palet dan kembalikan ukuran SVG ke ukuran asli (koordinat memakai `viewBox` ukuran kerja).
 
 Latar belakang riset dan perbandingan dengan kompetitor ada di [`riset/RISET-VEKTORISASI.md`](riset/RISET-VEKTORISASI.md).
