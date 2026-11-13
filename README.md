@@ -8,6 +8,7 @@ Halaman perkenalan brand **Helonoia** beserta aset mereknya: maskot, logo, dan i
 | [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md) | Panduan deploy ke server sendiri (aaPanel, Nginx manual, cPanel). |
 | [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) | Deploy otomatis `HTML/` ke server setiap push ke `main`. Cara menyiapkannya: [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md#update-otomatis-cicd). |
 | [`helonoia/`](helonoia/) | Generator maskot dan logo (`helonoia_monster.py`) beserta hasilnya, dan generator gambar promosi (`generate.py`). |
+| [`helonoia/karakter/`](helonoia/karakter/) | Karakter Noia (gaya kartun bercakar) dalam beberapa pose dan ekspresi, dari `helonoia_karakter.py`. |
 | [`helonoia/ikon/`](helonoia/ikon/) | Ikon untuk bagian "Empat kebiasaan kami". |
 
 ## Halaman brand
@@ -37,6 +38,29 @@ cd helonoia && python3 helonoia_monster.py
 | `helonoia_monster_bg.svg` / `.png` | Maskot, latar gelap `#120B1E` |
 | `helonoia_logo.svg` / `.png` | Logo lengkap (maskot + tulisan), latar gelap |
 | `helonoia_logo_transparent.svg` | Logo lengkap, latar transparan |
+
+## Karakter Noia: pose & ekspresi
+
+[`helonoia/helonoia_karakter.py`](helonoia/helonoia_karakter.py) menggambar karakter monster ungu bergaris tebal (tanduk lime, cakar besar, ekor bergaris lime) sebagai SVG vektor. Tubuhnya dibangun dari kerangka sendi, jadi pose baru cukup ditulis sebagai posisi sendi di `POSE`, dan ekspresi baru cukup ditulis sebagai bentuk mata, alis, mulut, dan efek di `EKSPRESI`. Cukup Python 3.
+
+```bash
+cd helonoia && python3 helonoia_karakter.py            # 6 pose + lembar_pose.svg + lembar_ekspresi.svg
+python3 helonoia_karakter.py -p melambai -e malu        # satu kombinasi
+python3 helonoia_karakter.py -e kaget                   # kepala saja
+python3 helonoia_karakter.py --semua                    # semua 60 kombinasi pose x ekspresi
+python3 helonoia_karakter.py --daftar                   # daftar pose & ekspresi
+```
+
+| Pose (`-p`) | Tingkah laku | Ekspresi bawaan |
+| --- | --- | --- |
+| `siaga` | Kuda-kuda, cakar terbuka (seperti sketsa) | `galak` |
+| `melambai` | Menyapa duluan | `senang` |
+| `lompat` | Lompat kegirangan | `tertawa` |
+| `berpikir` | Tangan di dagu | `bingung` |
+| `menunjuk` | "Lihat ini!", cocok untuk promosi | `senang` |
+| `duduk` | Duduk santai | `ngantuk` |
+
+Ekspresi (`-e`): `galak`, `senang`, `curiga`, `kaget`, `sedih`, `ngantuk`, `tertawa`, `malu`, `bingung`, `jatuh_cinta`. Semua pose bisa dipasangkan dengan semua ekspresi. `-o file.svg` menentukan nama file, `--png` ikut mengekspor PNG (perlu `pip install cairosvg`).
 
 ## Generator gambar vektor
 
