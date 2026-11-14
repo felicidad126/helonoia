@@ -9,6 +9,7 @@ Halaman perkenalan brand **Helonoia** beserta aset mereknya: maskot, logo, dan i
 | [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) | Deploy otomatis `HTML/` ke server setiap push ke `main`. Cara menyiapkannya: [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md#update-otomatis-cicd). |
 | [`helonoia/`](helonoia/) | Generator maskot dan logo (`helonoia_monster.py`) beserta hasilnya. |
 | [`helonoia/ikon/`](helonoia/ikon/) | Ikon untuk bagian "Empat kebiasaan kami". |
+| [`.claude/skills/web-artifacts-builder/`](.claude/skills/web-artifacts-builder/) | Skill Claude Code untuk membuat artifact React + Tailwind + shadcn/ui. Salinan dari skill bawaan Anthropic yang langkah bundle-nya sudah diperbaiki; otomatis dipakai saat Claude Code membuka repo ini. |
 
 ## Halaman brand
 
