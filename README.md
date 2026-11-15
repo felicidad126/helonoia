@@ -4,7 +4,7 @@ Halaman perkenalan brand **Helonoia** beserta aset mereknya: maskot, logo, dan i
 
 | Folder / file | Isi |
 | --- | --- |
-| [`HTML/`](HTML/) | Halaman brand (`index.html`, `maskot-helonoia.webp`, `favicon.png`, `logo.png`). Berdiri sendiri, tinggal disalin ke server. |
+| [`HTML/`](HTML/) | Halaman brand (`index.html`, `maskot-helonoia.webp`, `favicon.png`, `logo.png`, `robots.txt`, `sitemap.xml`). Berdiri sendiri, tinggal disalin ke server. |
 | [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md) | Panduan deploy ke server sendiri (aaPanel, Nginx manual, cPanel). |
 | [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) | Deploy otomatis `HTML/` ke server setiap push ke `main`. Cara menyiapkannya: [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md#update-otomatis-cicd). |
 | [`helonoia/`](helonoia/) | Gambar asli maskot (`helonoia_maskot.webp`), serta generator tulisan logo dan maskot versi lama (`helonoia_monster.py`) beserta hasilnya. |
@@ -15,7 +15,7 @@ Halaman perkenalan brand **Helonoia** beserta aset mereknya: maskot, logo, dan i
 
 Halaman di folder [`HTML/`](HTML/) mengenalkan brand **Helonoia** sebelum ada produk: arti nama (HELO dari "halo", NOIA dari "paranoia"), maskot monster ungu dan cerita tiap bagian tubuhnya, dan empat kebiasaan brand. Versi resminya ada di https://helonoia.com/ (aaPanel, lihat [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md)).
 
-- Animasi penuh (abaikan setting reduced-motion): `HTML/?motion=full`
+- Animasi selalu jalan penuh, termasuk di HP yang setelan animasinya dimatikan (reduced-motion), supaya tampilannya sama di Android dan iPhone.
 - Maskot di halaman ini adalah `HTML/maskot-helonoia.webp`, potongan dari gambar asli [`helonoia/helonoia_maskot.webp`](helonoia/helonoia_maskot.webp) (latar transparan). `HTML/favicon.png` (kepala maskot dalam lingkaran, dipakai juga di header) dan `HTML/logo.png` (maskot + tulisan HELONOIA) dibuat dari gambar asli yang sama.
 - Di bagian atas, mata maskot digambar ulang sebagai vektor di atas gambarnya (komponen `mk-*` di `index.html`), dan penanda bernomor di bagian "Kenalan dengan si monster ungu" memakai koordinat piksel gambar. Keduanya perlu disesuaikan bila `maskot-helonoia.webp` diganti.
 - Maskot di bagian atas tersusun dari lapisan terpisah (siluet, tanduk, gambar berwarna, mata), dan animasinya hanya mengubah `transform` atau `opacity` lapisan itu, supaya dijalankan GPU dan tetap mulus di HP Android. Jangan pindahkan animasi ke elemen di dalam SVG yang memuat gambar maskot: seluruh gambar akan dilukis ulang setiap frame dan animasinya tersendat.
@@ -24,6 +24,7 @@ Halaman di folder [`HTML/`](HTML/) mengenalkan brand **Helonoia** sebelum ada pr
 - Interaksi di bagian atas: maskot muncul lewat animasi perkenalan (siluet, mata terbuka, melirik, tanduk menyala, lalu tampil penuh dan menyapa). Setelah itu matanya mengikuti kursor (di HP ia melirik ke sana kemari sendiri) dan sesekali berkedip. Tombol "Sapa balik" atau ketukan pada maskot membuatnya kaget sebentar lalu menjawab.
 - Maskot di bagian anatomi dan penutup condong ke arah kursor. Ketukan atau tombol "Sapa balik" di bagian penutup membuatnya melompat kecil dan menjawab.
 - `canonical`, `og:url`, dan `og:image` mengarah ke `https://helonoia.com/`.
+- Untuk mesin pencari: judul `<h1>` berisi teks "Helonoia" (tersembunyi di balik logo SVG, kelas `sr-only`), data terstruktur JSON-LD (`WebSite` dan `Organization`) di `<head>`, serta `robots.txt` dan `sitemap.xml`. Begitu ada akun media sosial resmi, tambahkan tautannya sebagai `sameAs` di `Organization`. Pendaftaran ke Google Search Console ada di [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md#supaya-muncul-di-google).
 - Kontak (WhatsApp, Instagram, email) diisi di objek `KONTAK` pada skrip di bagian bawah `HTML/index.html`. Selama kosong, tombol kontak tidak ditampilkan.
 - Bagian "Yang sudah bisa dilihat" menautkan ke katalog undangan digital di https://invitation.helonoia.net/.
 - Font Fredoka (huruf logo) dan Plus Jakarta Sans dimuat dari Google Fonts, berlisensi SIL Open Font License 1.1.

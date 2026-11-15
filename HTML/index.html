@@ -8,6 +8,8 @@
 <meta name="theme-color" content="#120B1E">
 <link rel="canonical" href="https://helonoia.com/">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="Helonoia">
+<meta property="og:locale" content="id_ID">
 <meta property="og:url" content="https://helonoia.com/">
 <meta property="og:title" content="Helonoia">
 <meta property="og:description" content="Monster ungu yang suka nyapa duluan. Saat ini kami membuat undangan digital, yang lain menyusul.">
@@ -18,9 +20,36 @@
 <link rel="icon" type="image/png" sizes="128x128" href="favicon.png">
 <link rel="apple-touch-icon" href="logo.png">
 <link rel="preload" as="image" href="maskot-helonoia.webp" type="image/webp" fetchpriority="high">
+<!-- Data terstruktur: memberi tahu Google nama situs ("Helonoia") dan logonya. Begitu ada profil resmi
+     (Instagram, dll.), tambahkan di Organization: "sameAs": ["https://www.instagram.com/..."]. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://helonoia.com/#website",
+      "name": "Helonoia",
+      "alternateName": ["helonoia.com"],
+      "url": "https://helonoia.com/",
+      "inLanguage": "id-ID",
+      "publisher": { "@id": "https://helonoia.com/#organization" }
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://helonoia.com/#organization",
+      "name": "Helonoia",
+      "url": "https://helonoia.com/",
+      "logo": "https://helonoia.com/logo.png",
+      "image": "https://helonoia.com/logo.png",
+      "slogan": "Monster ungu yang suka nyapa duluan.",
+      "description": "Helonoia adalah merek baru. Saat ini kami membuat undangan pernikahan digital dengan RSVP, ucapan, galeri, peta, dan amplop digital. Yang lain menyusul."
+    }
+  ]
+}
+</script>
 <script>
 document.documentElement.classList.add("js");
-if (/[?&]motion=full(&|$)/.test(location.search)) document.documentElement.classList.add("motion-full");
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -55,6 +84,8 @@ html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;scrol
 body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.65 var(--f-t);overflow-x:hidden}
 a{color:inherit}
 h1,h2,h3{margin:0;font-family:var(--f-d);font-weight:700;line-height:1.05;text-wrap:balance}
+/* Teks yang dibaca mesin pencari dan pembaca layar, tapi tidak tampil (judul utama digambar sebagai logo SVG) */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
 p{margin:0;text-wrap:pretty}
 .wrap{max-width:var(--wrap);margin:0 auto;padding:0 var(--gut)}
 [hidden]{display:none!important}
@@ -64,7 +95,7 @@ p{margin:0;text-wrap:pretty}
 /* ---------- Monster di bagian anatomi dan penutup (maskot-helonoia.webp) ---------- */
 /* --lean: condong ke arah kursor (diatur skrip). Animasi naik-turun memakai transform, jadi keduanya bisa jalan bersamaan. */
 .monster{display:block;width:100%;height:auto;overflow:visible;transform-origin:50% 100%;
-  rotate:var(--lean,0deg);transition:rotate var(--m-tr,.6s) var(--ease);
+  rotate:var(--lean,0deg);transition:rotate .6s var(--ease);
   animation:m-bob 4.2s ease-in-out infinite;animation-play-state:var(--m-play,running)}
 .monster.is-hop{animation:m-hop .42s ease-in-out 3}
 @keyframes m-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-1.4%)}}
@@ -295,19 +326,6 @@ footer .meta p+p{margin-top:4px}
 .js .rv{opacity:0;transform:translateY(26px);transition:opacity .8s var(--ease),transform .8s var(--ease)}
 .js .rv.in{opacity:1;transform:none}
 .js .rv.d1{transition-delay:.08s}.js .rv.d2{transition-delay:.16s}.js .rv.d3{transition-delay:.24s}
-
-/* Gerak dikurangi bila diminta (kecuali ?motion=full) */
-@media (prefers-reduced-motion:reduce){
-  :root:not(.motion-full){scroll-behavior:auto;--m-play:paused;--m-tr:0s}
-  :root:not(.motion-full) .mark.on .ring,:root:not(.motion-full) .noia:hover .word{animation:none}
-  :root:not(.motion-full) .rv{opacity:1;transform:none;transition:none}
-  :root:not(.motion-full) .btn,:root:not(.motion-full) .trait{transition:none;transform:none}
-  /* Maskot hero: langsung tampil utuh, mata tetap mengikuti kursor tanpa transisi */
-  :root:not(.motion-full) .mk-play .mk-sil,:root:not(.motion-full) .mk-play .mk-eye-in,:root:not(.motion-full) .mk-play .mk-glance,:root:not(.motion-full) .mk-play .mk-horns,:root:not(.motion-full) .mk-play .mk-color,:root:not(.motion-full) .mk-play .mk-rig,:root:not(.motion-full) .mk-play .mk-flash,:root:not(.motion-full) .mk-play .mk-bubble,:root:not(.motion-full) .mk-play .mk-hint,:root:not(.motion-full) .mk-done .mk-breath,:root:not(.motion-full) .mk-react .mk-rig,:root:not(.motion-full) .mk-react .mk-bubble{animation:none}
-  :root:not(.motion-full) .mk-armed .mk-color,:root:not(.motion-full) .mk-armed .mk-bubble,:root:not(.motion-full) .mk-armed .mk-hint{opacity:1}
-  :root:not(.motion-full) .mk-armed .mk-eye-in{transform:none}
-  :root:not(.motion-full) .mk-pupil{transition:none}
-}
 </style>
 </head>
 <body>
@@ -334,7 +352,7 @@ footer .meta p+p{margin-top:4px}
     <div class="wrap">
       <div class="hero-text">
         <p class="hello rv">Salam kenal, kami baru menetas.</p>
-        <h1 class="rv d1"><svg viewBox="28 -703 5132 727" role="img" aria-label="Helonoia"><use href="#wm-paths"/></svg></h1>
+        <h1 class="rv d1"><span class="sr-only">Helonoia</span><svg viewBox="28 -703 5132 727" aria-hidden="true" focusable="false"><use href="#wm-paths"/></svg></h1>
         <p class="tagline rv d2">Monster ungu yang suka nyapa duluan.</p>
         <p class="lead rv d2">Helonoia adalah merek baru. Maskotnya bercakar besar dan selalu melirik curiga. Saat ini kami membuat undangan digital, yang lain menyusul.</p>
         <div class="btns rv d3">
@@ -558,7 +576,6 @@ footer .meta p+p{margin-top:4px}
   if (!stage) return;
   var svg = stage.querySelector(".mk-eyes"), rig = stage.querySelector(".mk-rig");
   var bubble = stage.querySelector(".mk-bubble");
-  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches && !document.documentElement.classList.contains("motion-full");
   var INTRO_MS = 3800;
 
   /* Sembunyikan dulu, lalu mainkan saat terlihat. Tanpa JS, maskot tampil utuh. */
@@ -600,7 +617,7 @@ footer .meta p+p{margin-top:4px}
     void stage.offsetWidth;
     stage.classList.add("mk-play");
     bubble.textContent = LINES[0]; li = 1;
-    timer = setTimeout(function () { stage.classList.remove("mk-armed"); stage.classList.add("mk-done"); done = true; update(); }, reduce ? 0 : INTRO_MS);
+    timer = setTimeout(function () { stage.classList.remove("mk-armed"); stage.classList.add("mk-done"); done = true; update(); }, INTRO_MS);
   }
 
   /* Mata mengikuti kursor atau jari */
@@ -632,7 +649,7 @@ footer .meta p+p{margin-top:4px}
 
   /* Tanpa kursor (mis. di HP), dia melirik ke sana kemari dengan curiga */
   var glances = [[1, -.6], [-.9, .2], [.4, .9], [-1, -.3], [.9, .4], [0, 0]], gi = 0;
-  if (!reduce) setInterval(function () {
+  setInterval(function () {
     if (!done || !vis || Date.now() - lastMove < 4000) return;
     ptr = null;
     var g = glances[gi++ % glances.length];
@@ -643,7 +660,7 @@ footer .meta p+p{margin-top:4px}
   }, 2200);
 
   /* Sesekali berkedip */
-  if (!reduce) setInterval(function () {
+  setInterval(function () {
     if (!done || !vis || Math.random() < .4) return;
     eyes.forEach(function (e) {
       e.lid.classList.remove("mk-blink"); void e.lid.getBBox(); e.lid.classList.add("mk-blink");
@@ -683,8 +700,6 @@ footer .meta p+p{margin-top:4px}
 var KONTAK = { whatsapp: "", instagram: "", email: "" };
 
 (function () {
-  var root = document.documentElement;
-  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches && !root.classList.contains("motion-full");
 
   /* Header jadi solid setelah digulir */
   var top = document.querySelector(".top");
@@ -744,7 +759,7 @@ var KONTAK = { whatsapp: "", instagram: "", email: "" };
 
   /* Saat tidak ada kursor (mis. di HP), si monster condong ke sana kemari dengan curiga */
   var glances = [4, -3, 0, 5, -5, 2], gi = 0;
-  if (!reduce) setInterval(function () {
+  setInterval(function () {
     if (Date.now() - lastMove < 4000) return;
     ptr = null;
     var g = glances[gi++ % glances.length];
@@ -765,7 +780,7 @@ var KONTAK = { whatsapp: "", instagram: "", email: "" };
   function sapa(stage, text) {
     if (!stage) return;
     var m = stage.querySelector(".monster"), b = stage.querySelector(".bubble");
-    if (!reduce && m) {
+    if (m) {
       m.classList.remove("is-hop");
       m.getBoundingClientRect(); /* mulai ulang animasi bila diklik berturut-turut */
       m.classList.add("is-hop");
@@ -833,7 +848,7 @@ var KONTAK = { whatsapp: "", instagram: "", email: "" };
 
   /* Muncul saat digulir */
   var rv = document.querySelectorAll(".rv");
-  if ("IntersectionObserver" in window && !reduce) {
+  if ("IntersectionObserver" in window) {
     var io = new IntersectionObserver(function (es) {
       es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
     }, { rootMargin: "0px 0px -8% 0px" });
