@@ -1,6 +1,6 @@
 # Deploy Halaman Helonoia ke Server Sendiri
 
-Halaman brand Helonoia adalah situs statis. Seluruhnya hanya 4 file di folder [`HTML/`](HTML/):
+Halaman brand Helonoia adalah situs statis. Seluruhnya hanya 6 file di folder [`HTML/`](HTML/):
 
 | File | Isi |
 |---|---|
@@ -8,6 +8,8 @@ Halaman brand Helonoia adalah situs statis. Seluruhnya hanya 4 file di folder [`
 | `maskot-helonoia.webp` | Gambar maskot |
 | `favicon.png` | Ikon di tab browser dan di header |
 | `logo.png` | Gambar pratinjau saat link dibagikan, dan ikon saat halaman disimpan ke layar utama HP |
+| `robots.txt` | Izin untuk mesin pencari, dan alamat sitemap |
+| `sitemap.xml` | Daftar halaman untuk Google. Lihat [Supaya muncul di Google](#supaya-muncul-di-google) |
 
 Tidak butuh PHP, database, Node.js, atau proses build. Huruf (Fredoka dan Plus Jakarta Sans) dimuat dari Google Fonts oleh browser pengunjung.
 
@@ -141,7 +143,7 @@ Klik **Submit**.
 
 Pilih salah satu cara.
 
-**Lewat panel:** buka menu **Files**, masuk ke `/www/wwwroot/helonoia.com`, hapus `index.html` bawaan aaPanel, lalu **Upload** `index.html`, `maskot-helonoia.webp`, `favicon.png`, dan `logo.png` dari folder `HTML/` repo ini. Keempatnya diletakkan **langsung** di folder itu, bukan di subfolder `HTML`.
+**Lewat panel:** buka menu **Files**, masuk ke `/www/wwwroot/helonoia.com`, hapus `index.html` bawaan aaPanel, lalu **Upload** `index.html`, `maskot-helonoia.webp`, `favicon.png`, `logo.png`, `robots.txt`, dan `sitemap.xml` dari folder `HTML/` repo ini. Semuanya diletakkan **langsung** di folder itu, bukan di subfolder `HTML`.
 
 **Lewat SSH (sebagai root):**
 
@@ -246,7 +248,7 @@ Perintah ini mengambil branch `main`. Pastikan perubahan terbaru sudah di-merge 
 Dari folder repo ini di komputermu (bukan di server):
 
 ```bash
-scp HTML/index.html HTML/maskot-helonoia.webp HTML/favicon.png HTML/logo.png namauser@IP-SERVER:~/
+scp HTML/index.html HTML/maskot-helonoia.webp HTML/favicon.png HTML/logo.png HTML/robots.txt HTML/sitemap.xml namauser@IP-SERVER:~/
 ```
 
 Lalu di server:
@@ -256,10 +258,10 @@ sudo mkdir -p /var/www/helonoia
 ```
 
 ```bash
-sudo mv ~/index.html ~/maskot-helonoia.webp ~/favicon.png ~/logo.png /var/www/helonoia/
+sudo mv ~/index.html ~/maskot-helonoia.webp ~/favicon.png ~/logo.png ~/robots.txt ~/sitemap.xml /var/www/helonoia/
 ```
 
-Di Windows, bisa juga memakai WinSCP atau FileZilla untuk mengunggah keempat file itu.
+Di Windows, bisa juga memakai WinSCP atau FileZilla untuk mengunggah keenam file itu.
 
 **Setelah cara 1 atau 2:** pastikan file bisa dibaca web server, lalu cek isinya.
 
@@ -271,7 +273,7 @@ sudo chmod -R a+rX /var/www/helonoia
 ls -l /var/www/helonoia
 ```
 
-Harus terlihat `index.html`, `maskot-helonoia.webp`, `favicon.png`, dan `logo.png`, **langsung** di dalam `/var/www/helonoia` (bukan di subfolder `HTML`).
+Harus terlihat `index.html`, `maskot-helonoia.webp`, `favicon.png`, `logo.png`, `robots.txt`, dan `sitemap.xml`, **langsung** di dalam `/var/www/helonoia` (bukan di subfolder `HTML`).
 
 ### B3. Atur Nginx untuk domain
 
@@ -357,7 +359,7 @@ sudo certbot renew --dry-run
 
 1. Arahkan domain ke hosting sesuai petunjuk penyedia (biasanya lewat *nameserver* atau record `A`). Jangan ubah record `invitation`.
 2. Buka **cPanel → File Manager → `public_html`** (atau folder milik domain itu).
-3. Unggah `index.html`, `maskot-helonoia.webp`, `favicon.png`, dan `logo.png` **langsung ke dalam** `public_html`, bukan ke subfolder `HTML`. Kalau sudah ada `index.html` atau `index.php` bawaan hosting, ganti atau hapus dulu.
+3. Unggah `index.html`, `maskot-helonoia.webp`, `favicon.png`, `logo.png`, `robots.txt`, dan `sitemap.xml` **langsung ke dalam** `public_html`, bukan ke subfolder `HTML`. Kalau sudah ada `index.html` atau `index.php` bawaan hosting, ganti atau hapus dulu.
 4. Pasang HTTPS di **cPanel → SSL/TLS Status → Run AutoSSL** (di beberapa hosting namanya menu "Let's Encrypt").
 5. Buka `https://domainmu`.
 
@@ -368,6 +370,7 @@ sudo certbot renew --dry-run
 - [ ] `https://helonoia.com` membuka halaman Helonoia, dengan gembok di address bar
 - [ ] `http://helonoia.com` dan `https://www.helonoia.com` ikut pindah ke halaman yang sama
 - [ ] Ikon tab berupa monster ungu
+- [ ] `https://helonoia.com/robots.txt` dan `https://helonoia.com/sitemap.xml` terbuka (bukan 404)
 - [ ] Maskot di bagian atas muncul lewat animasi perkenalan, lalu matanya mengikuti kursor
 - [ ] Tombol "Sapa balik" membuat maskot kaget sebentar dan menjawab
 - [ ] https://invitation.helonoia.com tetap membuka katalog undangan
@@ -390,7 +393,7 @@ git -C ~/helonoia-src pull
 cp -r ~/helonoia-src/HTML/. /www/wwwroot/helonoia.com/
 ```
 
-Atau unggah ulang keempat file lewat menu **Files**.
+Atau unggah ulang semua file di folder `HTML/` lewat menu **Files**.
 
 **Nginx manual:**
 
@@ -402,7 +405,7 @@ git -C ~/helonoia-src pull
 sudo cp -r ~/helonoia-src/HTML/. /var/www/helonoia/
 ```
 
-**cPanel:** unggah ulang keempat file.
+**cPanel:** unggah ulang semua file di folder `HTML/`.
 
 Web server tidak perlu di-restart. Kalau browser masih menampilkan versi lama, tekan Ctrl+F5 (atau Cmd+Shift+R di Mac).
 
@@ -479,6 +482,42 @@ Baris `og:image` di `HTML/index.html` mengarah ke `https://helonoia.com/logo.png
 
 ---
 
+## Supaya muncul di Google
+
+Google tidak otomatis tahu ada situs baru. Selama belum terdaftar, mengetik "helonoia" di Google tidak akan memunculkan helonoia.com, dan Google malah menganggapnya salah ketik dari "Heliconia". Yang sudah disiapkan di halaman: `robots.txt`, `sitemap.xml`, judul `<h1>` berupa teks "Helonoia", dan data terstruktur (nama situs + logo). Sisanya dikerjakan sekali di luar repo:
+
+### 1. Daftarkan ke Google Search Console
+
+1. Buka https://search.google.com/search-console dan masuk dengan akun Google milik Helonoia.
+2. **Add property**, pilih tipe **Domain** (bukan *URL prefix*), isi `helonoia.com`. Tipe Domain sekaligus mencakup `www`, `http`, dan `https`.
+3. Google memberi satu record `TXT` berisi `google-site-verification=...`. Tambahkan di Cloudflare: **DNS → Records → Add record**, Type `TXT`, Name `@`, Content tempel nilai dari Google. Kalau Search Console menawarkan tombol verifikasi otomatis lewat Cloudflare, pakai itu saja.
+4. Kembali ke Search Console, klik **Verify**. Kalau gagal, tunggu beberapa menit lalu ulangi.
+
+Record `TXT` ini jangan dihapus. Kalau hilang, akses Search Console ikut hilang.
+
+### 2. Kirim sitemap dan minta diindeks
+
+1. Di Search Console, buka **Sitemaps**, isi `sitemap.xml`, lalu **Submit**. Statusnya harus *Success*.
+2. Buka **URL Inspection** (kolom pencarian paling atas), isi `https://helonoia.com/`, lalu klik **Request indexing**.
+
+Biasanya halaman mulai muncul dalam beberapa hari sampai dua minggu. Cek dengan mengetik `site:helonoia.com` di Google. Begitu muncul di sana, mengetik "helonoia" saja juga akan memunculkannya. Untuk nama baru, posisinya membaik seiring makin banyak orang yang mencari dan mengekliknya.
+
+### 3. Bing (juga dipakai DuckDuckGo dan Yahoo)
+
+Buka https://www.bing.com/webmasters, pilih **Import from Google Search Console**. Situs dan sitemap ikut terdaftar tanpa verifikasi ulang.
+
+### 4. Tautan dari tempat lain
+
+Google lebih cepat menemukan dan memercayai situs yang ditautkan dari tempat lain. Yang paling mudah:
+
+- **Katalog undangan** (invitation.helonoia.net): tambahkan tautan ke `https://helonoia.com/`, misalnya di footer ("Bagian dari Helonoia"). Sekarang katalog itu belum menautkan ke helonoia.com sama sekali.
+- **Bio Instagram, TikTok, dan WhatsApp Business**: isi kolom situs web dengan `https://helonoia.com`.
+- **Google Business Profile** (https://business.google.com), kalau Helonoia melayani pelanggan: nama "Helonoia" bisa muncul sebagai kotak informasi di sisi kanan hasil pencarian.
+
+Begitu akun media sosial resmi ada, isi juga `KONTAK` dan `sameAs` di `HTML/index.html` (lihat [README](README.md)).
+
+---
+
 ## Kalau ada masalah
 
 | Gejala | Penyebab dan perbaikan |
@@ -494,4 +533,7 @@ Baris `og:image` di `HTML/index.html` mengarah ke `https://helonoia.com/logo.png
 | Sertifikat Let's Encrypt gagal | DNS belum mengarah ke server (cek `nslookup helonoia.com`), port 80 tertutup di firewall penyedia VPS, atau proxy Cloudflare masih menyala. Set ke *DNS only*, lalu ulangi. |
 | `Too many redirects` | Mode SSL Cloudflare masih *Flexible*. Ubah ke **Full (strict)**. |
 | Maskot tidak muncul (kotak kosong) | `maskot-helonoia.webp` belum ikut diunggah, atau ukurannya 0 B. Unggah ulang file itu ke folder yang sama dengan `index.html`. |
+| `www.helonoia.com` tidak bisa dibuka | Record `A` untuk `www` belum dibuat di DNS (lihat [Langkah 1](#langkah-1-arahkan-domain-ke-server-semua-jalur)). Setelah itu pastikan `www.helonoia.com` juga ada di daftar domain situs dan di sertifikat SSL (aaPanel: A4 dan A6). |
+| `http://helonoia.com` tidak pindah ke `https://` | **Force HTTPS** belum dinyalakan (aaPanel: A6 langkah 3). Tanpa itu, Google bisa menganggap versi `http` dan `https` dua halaman berbeda. |
+| Tidak muncul saat mengetik "helonoia" di Google | Situs belum didaftarkan ke Google. Ikuti [Supaya muncul di Google](#supaya-muncul-di-google). |
 | Ikon tab tidak muncul | `favicon.png` belum ikut diunggah, atau ukurannya 0 B (unduhan gagal, unggah ulang). Browser juga sering menyimpan ikon lama, jadi coba di jendela privat. |

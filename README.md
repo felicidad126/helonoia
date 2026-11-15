@@ -4,7 +4,7 @@ Halaman perkenalan brand **Helonoia** beserta aset mereknya: maskot, logo, dan i
 
 | Folder / file | Isi |
 | --- | --- |
-| [`HTML/`](HTML/) | Halaman brand (`index.html`, `maskot-helonoia.webp`, `favicon.png`, `logo.png`). Berdiri sendiri, tinggal disalin ke server. |
+| [`HTML/`](HTML/) | Halaman brand (`index.html`, `maskot-helonoia.webp`, `favicon.png`, `logo.png`, `robots.txt`, `sitemap.xml`). Berdiri sendiri, tinggal disalin ke server. |
 | [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md) | Panduan deploy ke server sendiri (aaPanel, Nginx manual, cPanel). |
 | [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) | Deploy otomatis `HTML/` ke server setiap push ke `main`. Cara menyiapkannya: [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md#update-otomatis-cicd). |
 | [`helonoia/`](helonoia/) | Gambar asli maskot (`helonoia_maskot.webp`), serta generator tulisan logo dan maskot versi lama (`helonoia_monster.py`) beserta hasilnya. |
@@ -24,6 +24,7 @@ Halaman di folder [`HTML/`](HTML/) mengenalkan brand **Helonoia** sebelum ada pr
 - Interaksi di bagian atas: maskot muncul lewat animasi perkenalan (siluet, mata terbuka, melirik, tanduk menyala, lalu tampil penuh dan menyapa). Setelah itu matanya mengikuti kursor (di HP ia melirik ke sana kemari sendiri) dan sesekali berkedip. Tombol "Sapa balik" atau ketukan pada maskot membuatnya kaget sebentar lalu menjawab.
 - Maskot di bagian anatomi dan penutup condong ke arah kursor. Ketukan atau tombol "Sapa balik" di bagian penutup membuatnya melompat kecil dan menjawab.
 - `canonical`, `og:url`, dan `og:image` mengarah ke `https://helonoia.com/`.
+- Untuk mesin pencari: judul `<h1>` berisi teks "Helonoia" (tersembunyi di balik logo SVG, kelas `sr-only`), data terstruktur JSON-LD (`WebSite` dan `Organization`) di `<head>`, serta `robots.txt` dan `sitemap.xml`. Begitu ada akun media sosial resmi, tambahkan tautannya sebagai `sameAs` di `Organization`. Pendaftaran ke Google Search Console ada di [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md#supaya-muncul-di-google).
 - Kontak (WhatsApp, Instagram, email) diisi di objek `KONTAK` pada skrip di bagian bawah `HTML/index.html`. Selama kosong, tombol kontak tidak ditampilkan.
 - Bagian "Yang sudah bisa dilihat" menautkan ke katalog undangan digital di https://invitation.helonoia.net/.
 - Font Fredoka (huruf logo) dan Plus Jakarta Sans dimuat dari Google Fonts, berlisensi SIL Open Font License 1.1.

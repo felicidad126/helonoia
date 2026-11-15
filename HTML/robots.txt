@@ -1,0 +1,5 @@
+# Semua mesin pencari boleh membaca seluruh situs.
+User-agent: *
+Allow: /
+
+Sitemap: https://helonoia.com/sitemap.xml
