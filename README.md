@@ -4,7 +4,7 @@ Halaman perkenalan brand **Helonoia** beserta aset mereknya: maskot, logo, dan i
 
 | Folder / file | Isi |
 | --- | --- |
-| [`HTML/`](HTML/) | Halaman brand (`index.html`, `maskot-helonoia.webp`, `maskot-glow.webp`, `favicon.png`, `logo.png`). Berdiri sendiri, tinggal disalin ke server. |
+| [`HTML/`](HTML/) | Halaman brand (`index.html`, `maskot-helonoia.webp`, `favicon.png`, `logo.png`). Berdiri sendiri, tinggal disalin ke server. |
 | [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md) | Panduan deploy ke server sendiri (aaPanel, Nginx manual, cPanel). |
 | [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) | Deploy otomatis `HTML/` ke server setiap push ke `main`. Cara menyiapkannya: [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md#update-otomatis-cicd). |
 | [`helonoia/`](helonoia/) | Gambar asli maskot (`helonoia_maskot.webp`), serta generator tulisan logo dan maskot versi lama (`helonoia_monster.py`) beserta hasilnya. |
@@ -16,7 +16,7 @@ Halaman perkenalan brand **Helonoia** beserta aset mereknya: maskot, logo, dan i
 Halaman di folder [`HTML/`](HTML/) mengenalkan brand **Helonoia** sebelum ada produk: arti nama (HELO dari "halo", NOIA dari "paranoia"), maskot monster ungu dan cerita tiap bagian tubuhnya, dan empat kebiasaan brand. Versi resminya ada di https://helonoia.com/ (aaPanel, lihat [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md)).
 
 - Animasi penuh (abaikan setting reduced-motion): `HTML/?motion=full`
-- Maskot di halaman ini adalah `HTML/maskot-helonoia.webp`, potongan dari gambar asli [`helonoia/helonoia_maskot.webp`](helonoia/helonoia_maskot.webp) (latar transparan). `HTML/maskot-glow.webp` adalah cahaya ungu di belakangnya saat animasi perkenalan. `HTML/favicon.png` (kepala maskot dalam lingkaran, dipakai juga di header) dan `HTML/logo.png` (maskot + tulisan HELONOIA) dibuat dari gambar asli yang sama.
+- Maskot di halaman ini adalah `HTML/maskot-helonoia.webp`, potongan dari gambar asli [`helonoia/helonoia_maskot.webp`](helonoia/helonoia_maskot.webp) (latar transparan). `HTML/favicon.png` (kepala maskot dalam lingkaran, dipakai juga di header) dan `HTML/logo.png` (maskot + tulisan HELONOIA) dibuat dari gambar asli yang sama.
 - Di bagian atas, mata maskot digambar ulang sebagai vektor di atas gambarnya (komponen `mk-*` di `index.html`), dan penanda bernomor di bagian "Kenalan dengan si monster ungu" memakai koordinat piksel gambar. Keduanya perlu disesuaikan bila `maskot-helonoia.webp` diganti.
 - Tulisan HELONOIA dibuat dari [`helonoia/helonoia_monster.py`](helonoia/helonoia_monster.py). Bila hurufnya berubah, potongan SVG di awal `<body>` perlu dibuat ulang dari generator itu.
 - Semua warna diambil dari logo: Malam `#120B1E`, Ungu Noia `#B26BFF`, Ungu Tua `#7C3FD6`, Lilac `#CDA6FF`, Lime `#C6FF3D`, Putih Halo `#F4EFFF`. Palet dan huruf sengaja tidak ditampilkan di halaman publik; tempatnya di dokumen brand.
