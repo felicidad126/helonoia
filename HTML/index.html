@@ -15,7 +15,9 @@
 <meta property="og:image:width" content="1000">
 <meta property="og:image:height" content="1000">
 <meta name="twitter:card" content="summary">
-<link rel="icon" type="image/png" sizes="128x128" href="favicon.png"><link rel="apple-touch-icon" href="logo.png">
+<link rel="icon" type="image/png" sizes="128x128" href="favicon.png">
+<link rel="apple-touch-icon" href="logo.png">
+<link rel="preload" as="image" href="maskot-helonoia.webp" type="image/webp" fetchpriority="high">
 <script>
 document.documentElement.classList.add("js");
 if (/[?&]motion=full(&|$)/.test(location.search)) document.documentElement.classList.add("motion-full");
@@ -59,7 +61,7 @@ p{margin:0;text-wrap:pretty}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 :focus-visible{outline:3px solid var(--lime);outline-offset:3px;border-radius:8px}
 
-/* ---------- Monster (satu gambar: maskot.webp) ---------- */
+/* ---------- Monster di bagian anatomi dan penutup (maskot-helonoia.webp) ---------- */
 /* --lean: condong ke arah kursor (diatur skrip). Animasi naik-turun memakai transform, jadi keduanya bisa jalan bersamaan. */
 .monster{display:block;width:100%;height:auto;overflow:visible;transform-origin:50% 100%;
   rotate:var(--lean,0deg);transition:rotate var(--m-tr,.6s) var(--ease);
@@ -124,6 +126,71 @@ p{margin:0;text-wrap:pretty}
   .hero-art{order:-1;max-width:400px}
   .hero h1{margin-top:22px}
 }
+
+/* ---------- Maskot hero: animasi perkenalan (komponen mk-*) ---------- */
+.mk-stage{position:relative;width:100%;container-type:inline-size}
+.mk-svg{display:block;width:100%;height:auto;overflow:visible;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.mk-flash{position:absolute;inset:8% 6% 4%;border-radius:50%;pointer-events:none;opacity:0;
+  background:radial-gradient(closest-side,rgba(178,107,255,.7),rgba(178,107,255,.18) 60%,rgba(178,107,255,0))}
+.mk-bubble{position:absolute;right:-2%;top:-3%;z-index:2;max-width:min(230px,44%);margin:0;padding:12px 16px;
+  border-radius:20px 20px 20px 4px;background:var(--paper);color:var(--paper-ink);font:600 15px/1.35 var(--f-t);
+  box-shadow:0 14px 34px rgba(0,0,0,.4);transform-origin:0 100%}
+.mk-hint{transition:opacity .4s}
+.mk-hint svg{width:18px;height:18px;flex:none}
+@container (max-width:440px){
+  .mk-bubble{top:-11%;right:-1%;max-width:41%;padding:9px 12px;border-radius:16px 16px 16px 4px;font-size:13px}
+}
+
+.mk-rig,.mk-breath,.mk-eye-in{transform-box:fill-box}
+.mk-rig,.mk-breath{transform-origin:50% 100%}
+.mk-eye-in{transform-origin:50% 0}
+.mk-pupil{transition:transform .14s ease-out}
+.mk-sil,.mk-horns{opacity:0}
+
+/* Keadaan awal sebelum animasi (hanya kalau JS jalan) */
+.mk-armed .mk-color,.mk-armed .mk-bubble,.mk-armed .mk-hint{opacity:0}
+.mk-armed .mk-sil{opacity:0}
+.mk-armed .mk-eye-in{transform:scaleY(0)}
+
+/* Urutan perkenalan: siluet, mata terbuka, melirik dua kali, tanduk menyala, muncul penuh, menyapa */
+.mk-play .mk-sil{animation:mk-sil 3.3s linear both}
+.mk-play .mk-eye-in{animation:mk-open .28s .65s cubic-bezier(.3,1.4,.5,1) both}
+.mk-play .mk-glance{animation:mk-glance 1.25s 1s ease-in-out both}
+.mk-play .mk-horns{animation:mk-neon 1.2s 2.1s linear both}
+.mk-play .mk-color{animation:mk-in .38s 2.9s ease-out both}
+.mk-play .mk-rig{animation:mk-shake .56s 2.9s ease-out both}
+.mk-play .mk-flash{animation:mk-flash .8s 2.9s ease-out both}
+.mk-play .mk-bubble{animation:mk-bubble .36s 3.35s cubic-bezier(.3,1.4,.5,1) both}
+.mk-play .mk-hint{animation:mk-in .4s 3.7s ease-out both}
+
+/* Setelah perkenalan selesai */
+.mk-done .mk-breath{animation:mk-breath 3.6s ease-in-out infinite}
+.mk-done .mk-eye-in.mk-blink{animation:mk-blink .16s ease-in-out}
+.mk-react .mk-rig{animation:mk-shake .5s ease-out}
+.mk-react .mk-bubble{animation:mk-bubble .32s cubic-bezier(.3,1.4,.5,1) both}
+
+@keyframes mk-sil{0%{opacity:0}10%,92%{opacity:1}100%{opacity:0}}
+@keyframes mk-open{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes mk-glance{
+  0%{transform:translate(0,0)}
+  16%,32%{transform:translate(calc(var(--gx) * -1),var(--gy))}
+  46%,56%{transform:translate(0,0)}
+  70%,84%{transform:translate(calc(var(--gx) * -1),var(--gy))}
+  100%{transform:translate(0,0)}}
+@keyframes mk-neon{0%{opacity:0}12%{opacity:1}20%{opacity:.2}30%{opacity:1}38%{opacity:.55}48%,100%{opacity:1}}
+@keyframes mk-in{from{opacity:0}to{opacity:1}}
+@keyframes mk-shake{
+  0%{transform:scale(.97)}
+  14%{transform:translate(-14px,0) rotate(-1.6deg) scale(1.025)}
+  30%{transform:translate(12px,0) rotate(1.3deg) scale(1.015)}
+  46%{transform:translate(-8px,0) rotate(-.8deg) scale(1.005)}
+  62%{transform:translate(5px,0) rotate(.4deg)}
+  80%{transform:translate(-2px,0)}
+  100%{transform:none}}
+@keyframes mk-flash{0%{opacity:0;transform:scale(.6)}25%{opacity:1}100%{opacity:0;transform:scale(1.25)}}
+@keyframes mk-bubble{from{opacity:0;transform:translateY(10px) scale(.86)}to{opacity:1;transform:none}}
+@keyframes mk-breath{0%,100%{transform:scale(1,1)}50%{transform:scale(1.008,1.018)}}
+@keyframes mk-blink{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.08)}}
 
 /* ---------- Bagian umum ---------- */
 section{position:relative;padding:clamp(72px,10vw,128px) 0}
@@ -229,11 +296,16 @@ footer .meta p+p{margin-top:4px}
   :root:not(.motion-full) .mark.on .ring,:root:not(.motion-full) .noia:hover .word{animation:none}
   :root:not(.motion-full) .rv{opacity:1;transform:none;transition:none}
   :root:not(.motion-full) .btn,:root:not(.motion-full) .trait{transition:none;transform:none}
+  /* Maskot hero: langsung tampil utuh, mata tetap mengikuti kursor tanpa transisi */
+  :root:not(.motion-full) .mk-play .mk-sil,:root:not(.motion-full) .mk-play .mk-eye-in,:root:not(.motion-full) .mk-play .mk-glance,:root:not(.motion-full) .mk-play .mk-horns,:root:not(.motion-full) .mk-play .mk-color,:root:not(.motion-full) .mk-play .mk-rig,:root:not(.motion-full) .mk-play .mk-flash,:root:not(.motion-full) .mk-play .mk-bubble,:root:not(.motion-full) .mk-play .mk-hint,:root:not(.motion-full) .mk-done .mk-breath,:root:not(.motion-full) .mk-react .mk-rig,:root:not(.motion-full) .mk-react .mk-bubble{animation:none}
+  :root:not(.motion-full) .mk-armed .mk-color,:root:not(.motion-full) .mk-armed .mk-bubble,:root:not(.motion-full) .mk-armed .mk-hint{opacity:1}
+  :root:not(.motion-full) .mk-armed .mk-eye-in{transform:none}
+  :root:not(.motion-full) .mk-pupil{transition:none}
 }
 </style>
 </head>
 <body>
-<!-- Tulisan logo HELONOIA: dibuat dari helonoia/helonoia_monster.py. Maskotnya ada di maskot.webp. -->
+<!-- Tulisan logo HELONOIA: dibuat dari helonoia/helonoia_monster.py. Maskotnya ada di maskot-helonoia.webp. -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><g id="wm-paths"><path class="w-helo" transform="translate(0 0) scale(1 -1)" d="M530 -8Q485 -8 466 6Q447 19 443 40Q439 62 439 84V600Q439 622 443 643Q447 664 466 678Q485 691 531 691Q577 691 596 678Q614 664 618 643Q622 622 622 599V83Q622 61 618 40Q614 19 595 6Q576 -8 530 -8ZM119 -8Q74 -8 55 6Q36 19 32 40Q28 62 28 84V600Q28 622 32 643Q36 664 55 678Q74 691 120 691Q166 691 184 678Q203 664 207 643Q211 622 211 599V83Q211 61 207 40Q203 19 184 6Q165 -8 119 -8ZM195 263V419H455V263Z"/><path class="w-helo" transform="translate(690 0) scale(1 -1)" d="M129 -9Q84 -9 65 4Q46 18 42 40Q38 61 38 83V600Q38 652 58 672Q79 691 132 691H498Q521 691 542 687Q562 683 576 664Q589 645 589 599Q589 554 576 535Q562 516 541 512Q520 508 497 508H221V419H406Q429 419 447 416Q465 412 476 396Q487 380 487 340Q487 302 476 286Q465 269 446 266Q427 263 404 263H221V174H498Q521 174 542 170Q562 166 576 147Q589 128 589 82Q589 37 576 18Q562 -1 541 -5Q520 -9 497 -9Z"/><path class="w-helo" transform="translate(1333 0) scale(1 -1)" d="M141 -9Q96 -9 77 4Q58 18 54 40Q50 61 50 83V600Q50 622 54 643Q58 664 77 678Q96 691 142 691Q188 691 206 678Q225 664 229 643Q233 622 233 599V147H477Q496 147 514 144Q531 141 542 124Q554 108 554 69Q554 31 542 14Q530 -2 512 -6Q495 -9 476 -9Z"/><path class="w-helo" transform="translate(1942 0) scale(1 -1)" d="M365 -20Q292 -20 228 8Q165 35 117 84Q69 133 42 198Q14 262 14 335Q14 411 40 477Q67 543 114 593Q161 643 224 671Q286 699 357 699Q430 699 494 672Q557 644 605 595Q653 546 680 480Q707 415 707 339Q707 265 680 200Q654 135 606 86Q559 36 498 8Q436 -20 365 -20ZM360 163Q394 163 424 176Q454 190 476 214Q499 237 512 270Q524 302 524 339Q524 376 511 408Q498 440 476 464Q453 489 424 502Q394 516 361 516Q327 516 298 502Q268 489 246 464Q223 440 210 408Q197 376 197 339Q197 303 210 271Q223 239 246 214Q268 190 298 176Q327 163 360 163Z"/><path class="w-noia" transform="translate(2703 0) scale(1 -1)" d="M118 -9Q74 -9 55 4Q36 18 32 39Q28 60 28 83V602Q28 624 32 644Q36 664 56 677Q75 690 120 690Q164 690 180 679Q196 668 209 651L459 315V602Q459 624 464 644Q468 664 487 677Q506 690 551 690Q597 690 616 676Q634 663 638 642Q642 621 642 598V82Q642 60 638 39Q634 18 615 4Q596 -9 550 -9Q516 -9 498 -4Q481 2 469 18L210 360V82Q210 60 206 39Q202 18 183 4Q164 -9 118 -9Z"/><path class="w-noia" transform="translate(3413 0) scale(1 -1)" d="M365 -20Q292 -20 228 8Q165 35 117 84Q69 133 42 198Q14 262 14 335Q14 411 40 477Q67 543 114 593Q161 643 224 671Q286 699 357 699Q430 699 494 672Q557 644 605 595Q653 546 680 480Q707 415 707 339Q707 265 680 200Q654 135 606 86Q559 36 498 8Q436 -20 365 -20ZM360 163Q394 163 424 176Q454 190 476 214Q499 237 512 270Q524 302 524 339Q524 376 511 408Q498 440 476 464Q453 489 424 502Q394 516 361 516Q327 516 298 502Q268 489 246 464Q223 440 210 408Q197 376 197 339Q197 303 210 271Q223 239 246 214Q268 190 298 176Q327 163 360 163Z"/><path class="w-noia" transform="translate(4174 0) scale(1 -1)" d="M119 -9Q74 -9 55 4Q36 18 32 40Q28 61 28 83V600Q28 622 32 643Q36 664 55 678Q74 691 120 691Q166 691 184 678Q203 664 207 643Q211 622 211 599V82Q211 60 207 39Q203 18 184 4Q165 -9 119 -9Z"/><path class="w-noia" transform="translate(4453 0) scale(1 -1)" d="M690 118Q705 88 706 67Q707 46 693 30Q679 14 648 -2Q600 -25 574 -16Q548 -8 525 41L355 389L187 40Q163 -7 137 -16Q111 -24 64 -1Q33 14 18 30Q4 46 5 67Q6 88 21 118L272 638Q284 662 308 676Q331 691 356 691Q374 691 390 684Q405 678 418 666Q431 654 439 637ZM197 136 273 292H438L514 136Z"/></g></defs></svg>
 
 <header class="top">
@@ -262,18 +334,64 @@ footer .meta p+p{margin-top:4px}
         <div class="btns rv d3">
           <a class="btn btn-primary" href="#nama">Kenalan dulu
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
-          <button class="btn btn-ghost" type="button" data-sapa="hero-stage">
+          <button class="btn btn-ghost" type="button" data-sapa="mk-stage">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M10 19c-2-3-2.4-8-.4-13"/><path d="M4.6 17c-2-3.2-2.4-7.4-.6-11.4"/><path d="M15 19c-1.6-3-1.8-8 0-13" opacity=".45"/></svg>
             Sapa balik</button>
         </div>
       </div>
 
       <div class="hero-art">
-        <div class="stage" id="hero-stage">
-          <p class="bubble" aria-live="polite"></p>
-          <img class="monster" src="maskot.webp" width="1007" height="1018" fetchpriority="high" alt="Maskot Helonoia: monster ungu bertanduk hijau lime dengan cakar terangkat, melirik curiga">
+        <div class="mk-stage" id="mk-stage">
+          <div class="mk-flash" aria-hidden="true"></div>
+          <p class="mk-bubble" aria-live="polite">Halo. Sudah kucek dua kali, kamu aman.</p>
+          <svg class="mk-svg" viewBox="0 0 1014 1024" role="img"
+               aria-label="Maskot Helonoia: monster ungu bertanduk hijau lime dengan cakar terangkat dan tatapan curiga">
+            <defs>
+              <image id="mk-img" href="maskot-helonoia.webp" width="1014" height="1024"/>
+              <filter id="mk-silf" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+                <feColorMatrix values="0 0 0 0 .03  0 0 0 0 .01  0 0 0 0 .06  0 0 0 1 0"/>
+              </filter>
+              <clipPath id="mk-hornclip"><path d="M260.1 99.1 258.9 99.9 257.7 100.8 256.6 101.9 255.5 103.2 254.5 104.8 253.6 105.8 252.9 106.2 252.2 106.2 251.8 105.8 250.2 106.2 247.6 107.8 243.9 110.2 239.1 113.8 233.9 118.0 228.3 123.0 222.2 128.8 215.8 135.2 210.9 140.2 207.8 143.6 206.4 145.4 206.6 145.6 206.6 146.0 206.2 146.5 205.5 147.1 204.5 147.9 203.8 148.5 203.4 149.0 203.4 149.4 203.6 149.6 203.5 150.1 203.0 150.7 202.1 151.5 200.9 152.5 199.9 153.4 199.3 154.3 199.0 155.1 199.0 155.9 198.8 156.6 198.2 157.4 197.5 158.1 196.5 158.9 195.4 159.9 194.3 161.3 193.1 163.0 191.9 165.0 191.0 166.6 190.5 167.9 190.4 168.8 190.6 169.2 190.6 169.9 190.2 170.8 189.5 171.9 188.5 173.1 187.8 174.1 187.4 174.9 187.4 175.4 187.6 175.6 187.6 176.0 187.2 176.5 186.5 177.1 185.5 177.9 184.7 178.6 184.1 179.2 183.6 179.8 183.4 180.2 183.2 180.8 183.2 181.2 183.4 181.8 183.6 182.2 183.6 183.1 183.4 184.2 182.9 185.6 182.1 187.4 181.3 189.0 180.4 190.5 179.5 191.9 178.5 193.1 177.8 194.1 177.4 194.9 177.4 195.4 177.6 195.6 177.7 195.9 177.6 196.3 177.2 196.8 176.8 197.2 176.4 197.7 176.3 198.1 176.4 198.4 176.6 198.6 176.6 199.1 176.4 199.9 175.9 200.9 175.1 202.1 174.6 203.2 174.4 204.1 174.4 204.8 174.6 205.2 174.7 205.8 174.6 206.2 174.2 206.8 173.8 207.2 173.4 207.8 173.3 208.2 173.4 208.8 173.6 209.2 173.7 209.8 173.6 210.2 173.2 210.8 172.8 211.2 172.3 212.2 171.9 213.8 171.6 215.8 171.4 218.2 171.1 220.2 170.9 221.6 170.6 222.4 170.4 222.6 170.2 224.2 170.1 227.2 170.0 231.6 170.0 237.4 170.1 242.2 170.4 246.2 170.8 249.4 171.2 251.6 171.8 253.4 172.2 254.8 172.8 255.8 173.2 256.2 173.6 256.8 173.7 257.2 173.6 257.8 173.4 258.2 173.3 258.8 173.4 259.2 173.8 259.8 174.2 260.2 174.6 260.7 174.7 261.1 174.6 261.4 174.4 261.6 174.2 262.1 174.2 262.7 174.4 263.5 174.6 264.5 175.6 266.8 177.4 270.4 179.9 275.4 183.1 281.6 186.4 287.1 189.6 291.9 192.9 295.9 196.1 299.1 198.8 301.4 200.8 302.8 202.1 303.2 202.9 302.8 203.6 302.6 204.4 302.7 205.1 303.1 205.9 303.9 206.4 304.6 206.8 305.2 207.0 305.8 207.0 306.2 206.9 306.8 206.6 307.2 206.2 307.8 205.8 308.2 205.8 308.9 206.2 309.8 207.2 310.9 208.8 312.1 210.1 312.9 211.2 313.1 212.1 312.9 212.9 312.1 213.8 310.3 214.9 307.4 216.2 303.5 217.8 298.5 219.9 292.6 222.8 285.9 226.4 278.2 230.6 269.8 235.1 261.6 239.7 253.9 244.5 246.5 249.5 239.5 254.3 233.2 258.9 227.6 263.4 222.6 267.6 218.4 270.9 214.8 273.3 211.9 274.8 209.8 275.2 208.2 275.8 206.9 276.4 205.6 277.1 204.5 277.9 203.5 278.4 202.6 278.6 201.7 278.6 200.9 278.4 200.1 277.8 199.3 276.8 198.4 275.4 197.5 273.6 196.5 271.6 195.0 269.2 193.0 266.5 190.5 263.5 187.5 260.9 184.6 258.6 181.9 256.8 179.2 255.2 176.8 253.9 174.1 252.6 171.4 251.5 168.5 250.5 165.5 249.7 162.1 249.1 158.2 248.6 153.9 248.4 149.1 248.2 145.5 248.2 143.0 248.4 141.6 248.6 141.4 248.9 140.5 249.1 139.0 249.4 136.9 249.6 134.1 250.1 131.2 250.7 128.2 251.5 125.1 252.5 121.9 253.8 118.4 255.4 114.6 257.4 110.6 259.6 106.4 261.2 103.1 262.2 100.7 262.6 99.2 262.4 98.8 261.9 98.6 261.1 98.7ZM490.6 19.4 490.4 19.6 491.4 20.8 493.6 22.8 497.1 25.6 501.9 29.4 505.8 32.8 508.8 35.8 510.9 38.4 512.1 40.6 513.4 42.6 514.6 44.2 515.9 45.5 517.1 46.5 518.0 47.4 518.5 48.1 518.6 48.8 518.4 49.2 518.9 50.9 520.1 53.6 522.1 57.5 524.9 62.5 526.9 66.4 528.1 69.1 528.6 70.8 528.4 71.2 528.4 72.2 528.6 73.8 529.1 75.8 529.9 78.2 530.4 81.6 530.8 85.7 531.0 90.6 531.0 96.4 530.7 101.8 530.1 106.8 529.1 111.4 527.9 115.6 526.2 120.0 524.2 124.5 521.9 129.1 519.1 133.9 516.3 138.4 513.4 142.6 510.5 146.6 507.5 150.4 505.4 153.4 504.3 155.6 504.1 157.1 504.9 157.9 505.3 158.6 505.4 159.2 505.2 159.8 504.8 160.2 504.2 160.5 503.6 160.5 502.9 160.2 502.1 159.8 501.2 159.8 500.2 160.4 499.1 161.6 497.9 163.4 497.0 164.8 496.5 165.8 496.4 166.4 496.6 166.6 496.7 167.0 496.6 167.5 496.2 168.1 495.8 168.9 495.4 169.7 495.3 170.6 495.4 171.5 495.6 172.5 495.5 173.4 495.0 174.3 494.1 175.1 492.9 175.9 492.0 176.5 491.5 177.0 491.4 177.4 491.6 177.6 491.6 178.1 491.4 178.9 490.9 179.9 490.1 181.1 489.6 182.2 489.4 183.1 489.4 183.8 489.6 184.2 489.7 184.8 489.6 185.2 489.2 185.8 488.8 186.2 488.4 187.8 488.1 190.4 488.0 194.1 488.0 198.9 488.2 203.2 488.6 207.1 489.1 210.5 489.9 213.5 490.9 216.8 492.3 220.4 494.0 224.4 496.0 228.6 498.0 232.5 500.0 236.0 502.0 239.1 504.0 241.9 506.2 244.6 508.6 247.4 511.1 250.1 513.9 252.9 516.8 255.5 519.8 258.0 522.9 260.4 526.1 262.6 529.7 264.8 533.6 266.9 537.8 269.0 542.2 271.0 546.6 272.7 550.9 274.1 555.0 275.1 559.0 275.9 562.8 276.4 566.4 276.6 569.9 276.6 573.1 276.4 576.2 276.0 579.1 275.5 581.8 274.9 584.2 274.1 586.6 273.2 588.9 272.2 591.0 271.1 593.0 269.9 595.6 267.9 598.7 265.1 602.4 261.6 606.6 257.4 610.2 253.6 613.2 250.4 615.6 247.6 617.4 245.4 619.6 242.1 622.4 237.7 625.6 232.2 629.4 225.8 632.6 219.8 635.2 214.4 637.2 209.6 638.8 205.4 640.1 201.3 641.2 197.4 642.1 193.8 642.9 190.2 643.5 186.1 644.0 181.2 644.4 175.6 644.6 169.4 644.8 164.6 644.8 161.4 644.6 159.6 644.4 159.4 644.1 158.3 643.9 156.4 643.6 153.8 643.4 150.2 642.8 146.3 641.9 141.9 640.8 137.1 639.2 131.9 637.6 126.9 635.9 122.1 634.0 117.6 632.0 113.4 629.6 108.9 626.9 104.1 623.8 99.1 620.2 93.9 616.2 88.5 611.8 83.0 606.8 77.4 601.2 71.6 596.5 66.8 592.5 62.9 589.2 60.0 586.8 58.0 583.6 55.7 579.9 53.1 575.5 50.1 570.5 46.9 565.2 43.7 559.6 40.6 553.6 37.5 547.4 34.5 541.1 31.8 534.7 29.2 528.2 27.0 521.8 25.0 515.6 23.3 509.7 21.9 504.1 20.9 498.9 20.1 494.9 19.6 492.1 19.4Z"/></clipPath>
+              <clipPath id="mk-in-l"><path d="M242.8 395.2 243.2 398.8 244.0 402.5 245.0 406.5 246.2 410.8 247.8 415.2 249.5 419.8 251.5 424.2 253.8 428.8 256.2 433.2 258.8 437.3 261.2 440.9 263.8 444.1 266.2 446.9 268.8 449.3 271.2 451.4 273.8 453.2 276.2 454.8 278.9 456.1 281.6 457.4 284.5 458.5 287.5 459.5 290.6 460.2 293.9 460.8 297.2 461.0 300.8 461.0 304.1 460.7 307.4 460.1 310.5 459.1 313.5 457.9 316.0 456.7 318.0 455.6 319.5 454.5 320.5 453.5 321.6 451.9 322.9 449.6 324.2 446.8 325.8 443.2 326.8 440.5 327.2 438.5 327.2 437.2 326.8 436.8 324.8 435.4 321.4 433.3 316.6 430.4 310.4 426.6 305.4 423.7 301.6 421.6 299.1 420.2 297.9 419.8 295.9 418.7 293.1 417.1 289.6 414.9 285.4 412.1 281.9 409.9 279.1 408.3 277.1 407.2 275.9 406.8 273.9 405.7 271.1 404.1 267.6 401.9 263.4 399.1 259.9 396.9 257.1 395.3 255.1 394.2 253.9 393.8 252.5 393.1 251.0 392.2 249.4 391.1 247.6 389.9 246.1 389.1 244.9 388.7 243.9 388.8 243.1 389.2 242.7 390.5 242.6 392.5Z"/></clipPath>
+              <clipPath id="mk-in-r"><path d="M518.9 327.2 518.1 326.8 516.7 327.0 514.6 328.0 511.8 329.8 508.2 332.2 505.4 334.2 503.3 335.6 501.9 336.4 501.1 336.6 499.5 337.6 497.0 339.2 493.6 341.5 489.4 344.5 486.0 346.8 483.5 348.4 481.9 349.4 481.1 349.6 474.9 353.5 463.3 361.0 446.2 372.1 423.8 386.9 407.1 398.2 396.4 406.1 391.5 410.5 392.5 411.5 393.4 412.5 394.1 413.5 394.8 414.5 395.2 415.5 396.1 416.7 397.2 418.1 398.6 419.6 400.4 421.4 402.1 422.9 403.7 424.3 405.2 425.5 406.8 426.5 408.4 427.5 410.3 428.5 412.4 429.5 414.6 430.5 416.8 431.4 418.8 432.1 420.6 432.8 422.4 433.2 423.9 433.6 425.3 433.9 426.5 434.0 427.5 434.0 428.3 434.1 428.9 434.2 429.4 434.4 429.6 434.6 430.8 434.9 432.8 435.1 435.6 435.4 439.4 435.6 442.2 435.8 444.2 435.8 445.4 435.6 445.6 435.4 446.6 435.1 448.2 434.9 450.5 434.6 453.5 434.4 456.4 434.0 459.1 433.5 461.8 432.9 464.2 432.1 467.1 431.1 470.4 429.7 474.0 428.0 478.0 426.0 481.4 424.2 484.3 422.6 486.6 421.1 488.4 419.9 490.3 418.3 492.4 416.4 494.8 414.2 497.2 411.8 499.8 408.9 502.2 405.8 504.8 402.4 507.2 398.6 509.4 395.1 511.3 391.9 512.9 388.9 514.1 386.1 515.2 383.5 516.2 381.0 517.1 378.6 517.9 376.4 518.5 374.2 519.0 372.1 519.4 370.0 519.6 368.0 519.9 366.4 520.1 365.3 520.4 364.6 520.6 364.4 520.8 363.9 520.9 363.1 521.0 362.1 521.0 360.9 521.1 359.9 521.2 359.1 521.4 358.6 521.6 358.4 521.8 356.8 521.9 353.9 522.0 349.8 522.0 344.2 521.9 340.1 521.8 337.2 521.6 335.6 521.4 335.4 521.2 334.9 521.1 334.1 521.0 333.1 521.0 331.9 520.9 330.8 520.8 329.9 520.6 329.2 520.4 328.8 520.0 328.2 519.5 327.8Z"/></clipPath>
+            </defs>
+            <g class="mk-rig">
+              <g class="mk-breath">
+                <use class="mk-sil" href="#mk-img" filter="url(#mk-silf)"/>
+                <use class="mk-horns" href="#mk-img" clip-path="url(#mk-hornclip)"/>
+                <use class="mk-color" href="#mk-img"/>
+                <!-- Mata digambar ulang sebagai vektor supaya pupilnya bisa bergerak -->
+                <g class="mk-eye" data-eye="l" data-cx="282.6" data-cy="430.5" data-rx="30" data-ry="18" data-rest="313,424">
+                  <path d="M230.2 371.2 229.8 372.8 229.3 374.4 228.9 376.3 228.6 378.4 228.4 380.6 228.4 382.2 228.8 383.2 229.5 383.6 230.5 383.4 231.6 383.5 232.7 384.0 233.9 384.9 235.1 386.1 236.1 387.4 236.7 388.8 237.0 390.2 237.0 391.8 237.1 392.9 237.2 393.8 237.4 394.4 237.6 394.6 237.9 395.4 238.1 396.6 238.4 398.4 238.6 400.6 239.2 403.4 240.1 406.8 241.2 410.8 242.8 415.2 244.5 419.8 246.5 424.2 248.8 428.8 251.2 433.2 254.1 437.6 257.2 441.9 260.6 446.0 264.4 450.0 267.8 453.4 270.9 456.1 273.8 458.2 276.2 459.8 278.9 461.1 281.6 462.4 284.5 463.5 287.5 464.5 290.6 465.2 293.9 465.8 297.2 466.0 300.8 466.0 304.1 465.7 307.4 465.1 310.5 464.1 313.5 462.9 316.1 461.6 318.4 460.4 320.2 459.1 321.8 457.9 323.1 456.7 324.2 455.6 325.1 454.5 325.9 453.5 326.8 451.9 327.9 449.6 329.2 446.8 330.8 443.2 331.9 440.4 332.6 438.3 333.0 436.9 333.0 436.1 333.1 435.5 333.2 435.0 333.4 434.6 333.6 434.4 333.8 433.4 333.9 431.6 334.0 429.1 334.0 425.9 334.2 423.2 334.8 421.1 335.5 419.5 336.5 418.5 337.4 417.8 338.3 417.2 339.1 417.0 339.9 417.0 340.6 416.9 341.2 416.6 341.8 416.2 342.2 415.8 342.6 415.1 342.9 414.4 343.0 413.5 343.0 412.5 342.7 411.4 342.1 410.1 341.1 408.8 339.9 407.2 338.8 405.7 337.8 404.1 336.9 402.4 336.1 400.6 335.4 399.1 334.6 397.7 333.9 396.5 333.1 395.5 332.6 394.6 332.2 393.9 332.0 393.2 332.0 392.8 332.1 393.0 332.4 394.0 332.8 395.8 333.2 398.2 333.8 400.5 334.4 402.5 335.1 404.2 335.9 405.8 336.2 407.2 336.1 408.6 335.5 409.9 334.5 411.1 332.9 411.9 330.6 412.1 327.8 411.9 324.2 411.1 320.3 410.1 315.9 408.9 311.1 407.4 305.9 405.6 301.6 404.1 298.4 402.9 296.1 401.9 294.9 401.1 293.1 400.2 290.7 399.2 287.8 398.1 284.2 396.9 279.6 394.9 273.9 392.3 267.0 389.0 259.0 385.0 252.0 381.4 246.0 378.1 241.0 375.2 237.0 372.8 233.9 371.2 231.6 370.8Z" fill="#07020D"/>
+                  <g class="mk-eye-in" clip-path="url(#mk-in-l)">
+                    <path d="M242.8 395.2 243.2 398.8 244.0 402.5 245.0 406.5 246.2 410.8 247.8 415.2 249.5 419.8 251.5 424.2 253.8 428.8 256.2 433.2 258.8 437.3 261.2 440.9 263.8 444.1 266.2 446.9 268.8 449.3 271.2 451.4 273.8 453.2 276.2 454.8 278.9 456.1 281.6 457.4 284.5 458.5 287.5 459.5 290.6 460.2 293.9 460.8 297.2 461.0 300.8 461.0 304.1 460.7 307.4 460.1 310.5 459.1 313.5 457.9 316.0 456.7 318.0 455.6 319.5 454.5 320.5 453.5 321.6 451.9 322.9 449.6 324.2 446.8 325.8 443.2 326.8 440.5 327.2 438.5 327.2 437.2 326.8 436.8 324.8 435.4 321.4 433.3 316.6 430.4 310.4 426.6 305.4 423.7 301.6 421.6 299.1 420.2 297.9 419.8 295.9 418.7 293.1 417.1 289.6 414.9 285.4 412.1 281.9 409.9 279.1 408.3 277.1 407.2 275.9 406.8 273.9 405.7 271.1 404.1 267.6 401.9 263.4 399.1 259.9 396.9 257.1 395.3 255.1 394.2 253.9 393.8 252.5 393.1 251.0 392.2 249.4 391.1 247.6 389.9 246.1 389.1 244.9 388.7 243.9 388.8 243.1 389.2 242.7 390.5 242.6 392.5Z" fill="#F8E8F8"/>
+                    <line x1="218" y1="373.0" x2="352" y2="452.1" stroke="#D8AEF4" stroke-width="20"/>
+                    <g class="mk-pupil" style="transform:translate(313px,424px)">
+                      <g class="mk-glance" style="--gx:46px;--gy:5px">
+                        <circle r="19" fill="#07020D"/>
+                        <ellipse cx="7" cy="-9" rx="3.6" ry="4.6" fill="#F8E8F8"/>
+                      </g>
+                    </g>
+                  </g>
+                </g>
+                <g class="mk-eye" data-eye="r" data-cx="465.9" data-cy="390.8" data-rx="44" data-ry="28" data-rest="497,364">
+                  <path d="M537.5 313.9 536.5 313.1 534.4 311.9 531.3 310.3 527.1 308.2 521.9 305.8 512.8 308.0 499.9 315.0 483.2 326.8 462.8 343.2 445.2 357.2 430.6 368.8 418.9 377.8 410.1 384.2 402.6 389.8 396.2 394.2 391.0 397.8 387.0 400.2 383.6 401.8 380.7 402.2 378.4 401.8 376.6 400.2 375.0 398.5 373.5 396.5 372.1 394.2 370.9 391.8 369.8 389.3 368.8 386.9 367.9 384.6 367.1 382.4 366.6 380.5 366.2 379.0 366.0 377.9 366.0 377.1 366.1 377.6 366.4 379.2 366.8 382.0 367.2 386.0 367.9 389.7 368.6 393.1 369.5 396.1 370.5 398.9 371.4 401.1 372.1 402.9 372.8 404.1 373.2 404.9 373.9 405.6 374.6 406.4 375.5 407.1 376.5 407.9 377.7 408.4 379.1 408.8 380.6 409.0 382.4 409.0 383.9 409.2 385.3 409.8 386.5 410.5 387.5 411.5 388.6 412.8 389.7 414.2 390.9 416.0 392.1 418.0 393.6 420.0 395.4 422.0 397.4 424.0 399.6 426.0 401.7 427.8 403.6 429.2 405.2 430.5 406.8 431.5 408.6 432.6 410.9 433.7 413.5 434.9 416.5 436.1 419.2 437.1 421.8 437.9 424.0 438.4 426.0 438.6 427.6 438.9 428.7 439.1 429.4 439.4 429.6 439.6 430.8 439.9 432.8 440.1 435.6 440.4 439.4 440.6 442.2 440.8 444.2 440.8 445.4 440.6 445.6 440.4 446.2 440.2 447.2 440.1 448.6 440.0 450.4 440.0 451.8 439.9 452.8 439.8 453.4 439.6 453.6 439.4 454.3 439.1 455.4 438.9 457.0 438.6 459.0 438.4 461.6 437.8 464.7 436.8 468.4 435.4 472.6 433.6 476.6 431.8 480.2 429.9 483.5 428.0 486.5 426.0 489.3 424.0 491.9 422.0 494.4 420.0 496.6 418.0 498.9 415.8 501.1 413.4 503.4 410.9 505.6 408.1 507.8 405.4 509.8 402.6 511.6 399.9 513.4 397.1 515.2 393.8 517.1 389.9 519.0 385.5 521.0 380.5 522.6 376.2 523.7 372.8 524.4 370.0 524.6 368.0 524.9 366.4 525.1 365.3 525.4 364.6 525.6 364.4 525.8 363.9 525.9 363.1 526.0 362.1 526.0 360.9 526.1 359.9 526.2 359.1 526.4 358.6 526.6 358.4 526.8 356.8 526.9 353.9 527.0 349.8 527.0 344.2 526.9 340.1 526.8 337.2 526.6 335.6 526.4 335.4 526.2 334.9 526.1 334.1 526.0 333.1 526.0 331.9 525.8 330.3 525.4 328.4 524.9 326.2 524.1 323.8 523.8 321.6 523.9 319.9 524.5 318.5 525.5 317.5 527.0 316.7 529.0 316.1 531.5 315.6 534.5 315.4 536.5 315.0 537.5 314.5Z" fill="#07020D"/>
+                  <g class="mk-eye-in" clip-path="url(#mk-in-r)">
+                    <path d="M518.9 327.2 518.1 326.8 516.7 327.0 514.6 328.0 511.8 329.8 508.2 332.2 505.4 334.2 503.3 335.6 501.9 336.4 501.1 336.6 499.5 337.6 497.0 339.2 493.6 341.5 489.4 344.5 486.0 346.8 483.5 348.4 481.9 349.4 481.1 349.6 474.9 353.5 463.3 361.0 446.2 372.1 423.8 386.9 407.1 398.2 396.4 406.1 391.5 410.5 392.5 411.5 393.4 412.5 394.1 413.5 394.8 414.5 395.2 415.5 396.1 416.7 397.2 418.1 398.6 419.6 400.4 421.4 402.1 422.9 403.7 424.3 405.2 425.5 406.8 426.5 408.4 427.5 410.3 428.5 412.4 429.5 414.6 430.5 416.8 431.4 418.8 432.1 420.6 432.8 422.4 433.2 423.9 433.6 425.3 433.9 426.5 434.0 427.5 434.0 428.3 434.1 428.9 434.2 429.4 434.4 429.6 434.6 430.8 434.9 432.8 435.1 435.6 435.4 439.4 435.6 442.2 435.8 444.2 435.8 445.4 435.6 445.6 435.4 446.6 435.1 448.2 434.9 450.5 434.6 453.5 434.4 456.4 434.0 459.1 433.5 461.8 432.9 464.2 432.1 467.1 431.1 470.4 429.7 474.0 428.0 478.0 426.0 481.4 424.2 484.3 422.6 486.6 421.1 488.4 419.9 490.3 418.3 492.4 416.4 494.8 414.2 497.2 411.8 499.8 408.9 502.2 405.8 504.8 402.4 507.2 398.6 509.4 395.1 511.3 391.9 512.9 388.9 514.1 386.1 515.2 383.5 516.2 381.0 517.1 378.6 517.9 376.4 518.5 374.2 519.0 372.1 519.4 370.0 519.6 368.0 519.9 366.4 520.1 365.3 520.4 364.6 520.6 364.4 520.8 363.9 520.9 363.1 521.0 362.1 521.0 360.9 521.1 359.9 521.2 359.1 521.4 358.6 521.6 358.4 521.8 356.8 521.9 353.9 522.0 349.8 522.0 344.2 521.9 340.1 521.8 337.2 521.6 335.6 521.4 335.4 521.2 334.9 521.1 334.1 521.0 333.1 521.0 331.9 520.9 330.8 520.8 329.9 520.6 329.2 520.4 328.8 520.0 328.2 519.5 327.8Z" fill="#F8E8F8"/>
+                    <line x1="366" y1="424.8" x2="546" y2="308.2" stroke="#D8AEF4" stroke-width="22"/>
+                    <g class="mk-pupil" style="transform:translate(497px,364px)">
+                      <g class="mk-glance" style="--gx:64px;--gy:8px">
+                        <circle r="25" fill="#07020D"/>
+                        <ellipse cx="9" cy="-12" rx="4.6" ry="5.8" fill="#F8E8F8"/>
+                      </g>
+                    </g>
+                  </g>
+                </g>
+              </g>
+            </g>
+          </svg>
+          <p class="hint mk-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z"/><path d="M3 10.5h18" stroke-width="2.4"/><circle cx="14" cy="13.4" r="2.4" fill="currentColor" stroke="none"/></svg><span id="hint">Psst… matanya mengikuti kursormu.</span></p>
         </div>
-        <p class="hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z"/><path d="M3 10.5h18" stroke-width="2.4"/><circle cx="14" cy="13.4" r="2.4" fill="currentColor" stroke="none"/></svg><span id="hint">Psst… dia mengawasi kursormu.</span></p>
       </div>
     </div>
   </section>
@@ -313,14 +431,14 @@ footer .meta p+p{margin-top:4px}
       </div>
       <div class="anatomy">
         <div class="stage rv" id="anatomy-stage">
-          <svg class="monster" viewBox="0 0 1007 1018" role="img" aria-label="Maskot Helonoia dengan lima penanda bernomor">
-            <image href="maskot.webp" width="1007" height="1018"/>
+          <svg class="monster" viewBox="0 0 1014 1024" role="img" aria-label="Maskot Helonoia dengan lima penanda bernomor">
+            <image href="maskot-helonoia.webp" width="1014" height="1024"/>
             <g aria-hidden="true">
-              <g class="mark" data-mark="1"><circle class="ring" cx="668" cy="96" r="40"/><circle cx="668" cy="96" r="40"/><text x="668" y="98">1</text></g>
-              <g class="mark" data-mark="2"><circle class="ring" cx="176" cy="300" r="40"/><circle cx="176" cy="300" r="40"/><text x="176" y="302">2</text></g>
-              <g class="mark" data-mark="3"><circle class="ring" cx="312" cy="530" r="40"/><circle cx="312" cy="530" r="40"/><text x="312" y="532">3</text></g>
-              <g class="mark" data-mark="4"><circle class="ring" cx="36" cy="432" r="40"/><circle cx="36" cy="432" r="40"/><text x="36" y="434">4</text></g>
-              <g class="mark" data-mark="5"><circle class="ring" cx="826" cy="790" r="40"/><circle cx="826" cy="790" r="40"/><text x="826" y="792">5</text></g>
+              <g class="mark" data-mark="1"><circle class="ring" cx="672" cy="100" r="40"/><circle cx="672" cy="100" r="40"/><text x="672" y="102">1</text></g>
+              <g class="mark" data-mark="2"><circle class="ring" cx="180" cy="304" r="40"/><circle cx="180" cy="304" r="40"/><text x="180" y="306">2</text></g>
+              <g class="mark" data-mark="3"><circle class="ring" cx="316" cy="534" r="40"/><circle cx="316" cy="534" r="40"/><text x="316" y="536">3</text></g>
+              <g class="mark" data-mark="4"><circle class="ring" cx="40" cy="436" r="40"/><circle cx="40" cy="436" r="40"/><text x="40" y="438">4</text></g>
+              <g class="mark" data-mark="5"><circle class="ring" cx="830" cy="794" r="40"/><circle cx="830" cy="794" r="40"/><text x="830" y="796">5</text></g>
             </g>
           </svg>
         </div>
@@ -402,7 +520,7 @@ footer .meta p+p{margin-top:4px}
         <span class="disc" aria-hidden="true"></span>
         <div class="stage" id="closing-stage">
           <p class="bubble" aria-live="polite"></p>
-          <img class="monster" src="maskot.webp" width="1007" height="1018" loading="lazy" alt="Maskot Helonoia">
+          <img class="monster" src="maskot-helonoia.webp" width="1014" height="1024" loading="lazy" alt="Maskot Helonoia">
         </div>
       </div>
     </div>
@@ -420,6 +538,112 @@ footer .meta p+p{margin-top:4px}
     </div>
   </div>
 </footer>
+
+<script>
+/* Maskot hero: animasi perkenalan, mata mengikuti kursor, berkedip, dan reaksi saat disapa */
+(function () {
+  var stage = document.getElementById("mk-stage");
+  if (!stage) return;
+  var svg = stage.querySelector(".mk-svg");
+  var bubble = stage.querySelector(".mk-bubble");
+  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches && !document.documentElement.classList.contains("motion-full");
+  var INTRO_MS = 3800;
+
+  /* Sembunyikan dulu, lalu mainkan saat terlihat. Tanpa JS, maskot tampil utuh. */
+  stage.classList.add("mk-armed");
+
+  var eyes = [].map.call(stage.querySelectorAll(".mk-eye"), function (g) {
+    var rest = g.dataset.rest.split(",").map(Number);
+    return {
+      pupil: g.querySelector(".mk-pupil"), lid: g.querySelector(".mk-eye-in"),
+      cx: +g.dataset.cx, cy: +g.dataset.cy, rx: +g.dataset.rx, ry: +g.dataset.ry, rest: rest
+    };
+  });
+
+  var LINES = [
+    "Halo. Sudah kucek dua kali, kamu aman.",
+    "Cakarku buat menangkap typo, bukan kamu.",
+    "Aku belum punya nama. Ada ide?",
+    "Tenang, mukaku memang begini sejak menetas.",
+    "Kamu lihat itu juga? …ah, bukan apa-apa."
+  ], li = 1;
+
+  var done = false, ptr = null, raf = 0, lastMove = 0, timer = 0;
+
+  function setPupil(e, x, y) { e.pupil.style.transform = "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)"; }
+  function rest() { eyes.forEach(function (e) { setPupil(e, e.rest[0], e.rest[1]); }); }
+
+  function play() {
+    clearTimeout(timer);
+    done = false;
+    stage.classList.remove("mk-play", "mk-done", "mk-react");
+    stage.classList.add("mk-armed");
+    rest();
+    void stage.offsetWidth;
+    stage.classList.add("mk-play");
+    bubble.textContent = LINES[0]; li = 1;
+    timer = setTimeout(function () { stage.classList.remove("mk-armed"); stage.classList.add("mk-done"); done = true; update(); }, reduce ? 0 : INTRO_MS);
+  }
+
+  /* Mata mengikuti kursor atau jari */
+  function update() {
+    raf = 0;
+    if (!done || !ptr) return;
+    var m = svg.getScreenCTM();
+    if (!m) return;
+    var r = svg.getBoundingClientRect();
+    eyes.forEach(function (e) {
+      var ex = m.a * e.cx + m.c * e.cy + m.e, ey = m.b * e.cx + m.d * e.cy + m.f;
+      var dx = ptr.x - ex, dy = ptr.y - ey, d = Math.hypot(dx, dy) || 1;
+      var k = Math.min(1, d / Math.max(80, r.width * 0.6));
+      setPupil(e, e.cx + dx / d * k * e.rx, e.cy + dy / d * k * e.ry);
+    });
+  }
+  function queue() { if (!raf) raf = requestAnimationFrame(update); }
+  addEventListener("pointermove", function (ev) { ptr = { x: ev.clientX, y: ev.clientY }; lastMove = Date.now(); queue(); }, { passive: true });
+  addEventListener("pointerdown", function (ev) { ptr = { x: ev.clientX, y: ev.clientY }; lastMove = Date.now(); queue(); }, { passive: true });
+  addEventListener("scroll", queue, { passive: true });
+  document.documentElement.addEventListener("mouseleave", function () { ptr = null; if (done) rest(); });
+
+  /* Tanpa kursor (mis. di HP), dia melirik ke sana kemari dengan curiga */
+  var glances = [[1, -.6], [-.9, .2], [.4, .9], [-1, -.3], [.9, .4], [0, 0]], gi = 0;
+  if (!reduce) setInterval(function () {
+    if (!done || Date.now() - lastMove < 4000) return;
+    ptr = null;
+    var g = glances[gi++ % glances.length];
+    eyes.forEach(function (e) {
+      if (!g[0] && !g[1]) setPupil(e, e.rest[0], e.rest[1]);
+      else setPupil(e, e.cx + g[0] * e.rx, e.cy + g[1] * e.ry);
+    });
+  }, 2200);
+
+  /* Sesekali berkedip */
+  if (!reduce) setInterval(function () {
+    if (!done || Math.random() < .4) return;
+    eyes.forEach(function (e) {
+      e.lid.classList.remove("mk-blink"); void e.lid.getBBox(); e.lid.classList.add("mk-blink");
+    });
+  }, 3200);
+
+  /* Disapa: kaget sebentar lalu menjawab. Panggil window.mkSapa() dari tombol "Sapa balik". */
+  function sapa(text) {
+    if (!done) return;
+    bubble.textContent = text || LINES[li++ % LINES.length];
+    if (li % LINES.length === 0) li = 1;
+    stage.classList.remove("mk-react"); void stage.offsetWidth; stage.classList.add("mk-react");
+  }
+  window.mkSapa = sapa;
+  svg.addEventListener("click", function () { sapa(); });
+
+  /* Mulai saat maskot terlihat di layar */
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (es) {
+      if (es[0].isIntersecting) { io.disconnect(); play(); }
+    }, { threshold: .35 });
+    io.observe(stage);
+  } else play();
+})();
+</script>
 
 <script>
 /* Kontak Helonoia. Isi yang sudah ada; yang kosong tidak ditampilkan.
@@ -501,14 +725,16 @@ var KONTAK = { whatsapp: "", instagram: "", email: "" };
     }
   }
   document.querySelectorAll("[data-sapa]").forEach(function (btn) {
-    btn.addEventListener("click", function () { sapa(document.getElementById(btn.getAttribute("data-sapa"))); });
+    btn.addEventListener("click", function () {
+      var stage = document.getElementById(btn.getAttribute("data-sapa"));
+      if (stage && stage.classList.contains("mk-stage")) { if (window.mkSapa) window.mkSapa(); }
+      else sapa(stage);
+    });
   });
   document.querySelectorAll(".stage").forEach(function (stage) {
     var m = stage.querySelector(".monster");
     if (m) m.addEventListener("click", function () { sapa(stage); });
   });
-  var hero = document.getElementById("hero-stage");
-  setTimeout(function () { sapa(hero, lines[li++]); }, 900);
 
   /* Tombol kontak di bagian penutup (hanya yang sudah diisi di KONTAK) */
   (function () {
