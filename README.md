@@ -15,7 +15,7 @@ Halaman perkenalan brand **Helonoia** beserta aset mereknya: maskot, logo, dan i
 
 Halaman di folder [`HTML/`](HTML/) mengenalkan brand **Helonoia** sebelum ada produk: arti nama (HELO dari "halo", NOIA dari "paranoia"), maskot monster ungu dan cerita tiap bagian tubuhnya, dan empat kebiasaan brand. Versi resminya ada di https://helonoia.com/ (aaPanel, lihat [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md)).
 
-- Animasi penuh (abaikan setting reduced-motion): `HTML/?motion=full`
+- Animasi selalu jalan penuh, termasuk di HP yang setelan animasinya dimatikan (reduced-motion), supaya tampilannya sama di Android dan iPhone.
 - Maskot di halaman ini adalah `HTML/maskot-helonoia.webp`, potongan dari gambar asli [`helonoia/helonoia_maskot.webp`](helonoia/helonoia_maskot.webp) (latar transparan). `HTML/favicon.png` (kepala maskot dalam lingkaran, dipakai juga di header) dan `HTML/logo.png` (maskot + tulisan HELONOIA) dibuat dari gambar asli yang sama.
 - Di bagian atas, mata maskot digambar ulang sebagai vektor di atas gambarnya (komponen `mk-*` di `index.html`), dan penanda bernomor di bagian "Kenalan dengan si monster ungu" memakai koordinat piksel gambar. Keduanya perlu disesuaikan bila `maskot-helonoia.webp` diganti.
 - Maskot di bagian atas tersusun dari lapisan terpisah (siluet, tanduk, gambar berwarna, mata), dan animasinya hanya mengubah `transform` atau `opacity` lapisan itu, supaya dijalankan GPU dan tetap mulus di HP Android. Jangan pindahkan animasi ke elemen di dalam SVG yang memuat gambar maskot: seluruh gambar akan dilukis ulang setiap frame dan animasinya tersendat.
