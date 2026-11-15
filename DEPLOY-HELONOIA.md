@@ -1,11 +1,12 @@
 # Deploy Halaman Helonoia ke Server Sendiri
 
-Halaman brand Helonoia adalah situs statis. Seluruhnya hanya 4 file di folder [`HTML/`](HTML/):
+Halaman brand Helonoia adalah situs statis. Seluruhnya hanya 5 file di folder [`HTML/`](HTML/):
 
 | File | Isi |
 |---|---|
 | `index.html` | Halamannya (tulisan logo, CSS, dan JavaScript sudah di dalam file ini) |
-| `maskot.webp` | Gambar maskot |
+| `maskot-helonoia.webp` | Gambar maskot |
+| `maskot-glow.webp` | Cahaya ungu di belakang maskot saat animasi perkenalan |
 | `favicon.png` | Ikon di tab browser dan di header |
 | `logo.png` | Gambar pratinjau saat link dibagikan, dan ikon saat halaman disimpan ke layar utama HP |
 
@@ -141,7 +142,7 @@ Klik **Submit**.
 
 Pilih salah satu cara.
 
-**Lewat panel:** buka menu **Files**, masuk ke `/www/wwwroot/helonoia.com`, hapus `index.html` bawaan aaPanel, lalu **Upload** `index.html`, `maskot.webp`, `favicon.png`, dan `logo.png` dari folder `HTML/` repo ini. Keempatnya diletakkan **langsung** di folder itu, bukan di subfolder `HTML`.
+**Lewat panel:** buka menu **Files**, masuk ke `/www/wwwroot/helonoia.com`, hapus `index.html` bawaan aaPanel, lalu **Upload** `index.html`, `maskot-helonoia.webp`, `maskot-glow.webp`, `favicon.png`, dan `logo.png` dari folder `HTML/` repo ini. Kelimanya diletakkan **langsung** di folder itu, bukan di subfolder `HTML`.
 
 **Lewat SSH (sebagai root):**
 
@@ -246,7 +247,7 @@ Perintah ini mengambil branch `main`. Pastikan perubahan terbaru sudah di-merge 
 Dari folder repo ini di komputermu (bukan di server):
 
 ```bash
-scp HTML/index.html HTML/maskot.webp HTML/favicon.png HTML/logo.png namauser@IP-SERVER:~/
+scp HTML/index.html HTML/maskot-helonoia.webp HTML/maskot-glow.webp HTML/favicon.png HTML/logo.png namauser@IP-SERVER:~/
 ```
 
 Lalu di server:
@@ -256,10 +257,10 @@ sudo mkdir -p /var/www/helonoia
 ```
 
 ```bash
-sudo mv ~/index.html ~/maskot.webp ~/favicon.png ~/logo.png /var/www/helonoia/
+sudo mv ~/index.html ~/maskot-helonoia.webp ~/maskot-glow.webp ~/favicon.png ~/logo.png /var/www/helonoia/
 ```
 
-Di Windows, bisa juga memakai WinSCP atau FileZilla untuk mengunggah keempat file itu.
+Di Windows, bisa juga memakai WinSCP atau FileZilla untuk mengunggah kelima file itu.
 
 **Setelah cara 1 atau 2:** pastikan file bisa dibaca web server, lalu cek isinya.
 
@@ -271,7 +272,7 @@ sudo chmod -R a+rX /var/www/helonoia
 ls -l /var/www/helonoia
 ```
 
-Harus terlihat `index.html`, `maskot.webp`, `favicon.png`, dan `logo.png`, **langsung** di dalam `/var/www/helonoia` (bukan di subfolder `HTML`).
+Harus terlihat `index.html`, `maskot-helonoia.webp`, `maskot-glow.webp`, `favicon.png`, dan `logo.png`, **langsung** di dalam `/var/www/helonoia` (bukan di subfolder `HTML`).
 
 ### B3. Atur Nginx untuk domain
 
@@ -357,7 +358,7 @@ sudo certbot renew --dry-run
 
 1. Arahkan domain ke hosting sesuai petunjuk penyedia (biasanya lewat *nameserver* atau record `A`). Jangan ubah record `invitation`.
 2. Buka **cPanel → File Manager → `public_html`** (atau folder milik domain itu).
-3. Unggah `index.html`, `maskot.webp`, `favicon.png`, dan `logo.png` **langsung ke dalam** `public_html`, bukan ke subfolder `HTML`. Kalau sudah ada `index.html` atau `index.php` bawaan hosting, ganti atau hapus dulu.
+3. Unggah `index.html`, `maskot-helonoia.webp`, `maskot-glow.webp`, `favicon.png`, dan `logo.png` **langsung ke dalam** `public_html`, bukan ke subfolder `HTML`. Kalau sudah ada `index.html` atau `index.php` bawaan hosting, ganti atau hapus dulu.
 4. Pasang HTTPS di **cPanel → SSL/TLS Status → Run AutoSSL** (di beberapa hosting namanya menu "Let's Encrypt").
 5. Buka `https://domainmu`.
 
@@ -368,8 +369,8 @@ sudo certbot renew --dry-run
 - [ ] `https://helonoia.com` membuka halaman Helonoia, dengan gembok di address bar
 - [ ] `http://helonoia.com` dan `https://www.helonoia.com` ikut pindah ke halaman yang sama
 - [ ] Ikon tab berupa monster ungu
-- [ ] Maskot muncul, bergerak naik-turun, dan condong ke arah kursor
-- [ ] Tombol "Sapa balik" membuat maskot melompat kecil dan menjawab
+- [ ] Maskot di bagian atas muncul lewat animasi perkenalan, lalu matanya mengikuti kursor
+- [ ] Tombol "Sapa balik" membuat maskot kaget sebentar dan menjawab
 - [ ] https://invitation.helonoia.com tetap membuka katalog undangan
 
 ---
@@ -390,7 +391,7 @@ git -C ~/helonoia-src pull
 cp -r ~/helonoia-src/HTML/. /www/wwwroot/helonoia.com/
 ```
 
-Atau unggah ulang keempat file lewat menu **Files**.
+Atau unggah ulang kelima file lewat menu **Files**.
 
 **Nginx manual:**
 
@@ -402,7 +403,7 @@ git -C ~/helonoia-src pull
 sudo cp -r ~/helonoia-src/HTML/. /var/www/helonoia/
 ```
 
-**cPanel:** unggah ulang keempat file.
+**cPanel:** unggah ulang kelima file.
 
 Web server tidak perlu di-restart. Kalau browser masih menampilkan versi lama, tekan Ctrl+F5 (atau Cmd+Shift+R di Mac).
 
@@ -493,5 +494,5 @@ Baris `og:image` di `HTML/index.html` mengarah ke `https://helonoia.com/logo.png
 | `404 Not Found` di halaman utama | File tersalin ke subfolder `HTML/`, bukan langsung ke folder situs. Pindahkan isinya satu folder ke atas. |
 | Sertifikat Let's Encrypt gagal | DNS belum mengarah ke server (cek `nslookup helonoia.com`), port 80 tertutup di firewall penyedia VPS, atau proxy Cloudflare masih menyala. Set ke *DNS only*, lalu ulangi. |
 | `Too many redirects` | Mode SSL Cloudflare masih *Flexible*. Ubah ke **Full (strict)**. |
-| Maskot tidak muncul (kotak kosong) | `maskot.webp` belum ikut diunggah, atau ukurannya 0 B. Unggah ulang file itu ke folder yang sama dengan `index.html`. |
+| Maskot tidak muncul (kotak kosong) | `maskot-helonoia.webp` belum ikut diunggah, atau ukurannya 0 B. Unggah ulang file itu (dan `maskot-glow.webp`) ke folder yang sama dengan `index.html`. |
 | Ikon tab tidak muncul | `favicon.png` belum ikut diunggah, atau ukurannya 0 B (unduhan gagal, unggah ulang). Browser juga sering menyimpan ikon lama, jadi coba di jendela privat. |
