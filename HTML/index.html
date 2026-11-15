@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Helonoia — Menyapa duluan, mengecek dua kali</title>
-<meta name="description" content="Helonoia adalah merek baru dengan maskot monster ungu yang suka menyapa duluan. Saat ini kami membuat undangan digital, dan yang lain menyusul.">
+<title>Helonoia | Monster ungu yang suka nyapa duluan</title>
+<meta name="description" content="Helonoia adalah merek baru. Saat ini kami membuat undangan pernikahan digital dengan RSVP, ucapan, galeri, peta, dan amplop digital. Yang lain menyusul.">
 <meta name="theme-color" content="#120B1E">
 <link rel="canonical" href="https://helonoia.com/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Helonoia">
 <meta property="og:locale" content="id_ID">
 <meta property="og:url" content="https://helonoia.com/">
-<meta property="og:title" content="Helonoia — Salam kenal">
-<meta property="og:description" content="Menyapa duluan. Mengecek dua kali. Kenalan dulu dengan Helonoia.">
+<meta property="og:title" content="Helonoia">
+<meta property="og:description" content="Monster ungu yang suka nyapa duluan. Saat ini kami membuat undangan digital, yang lain menyusul.">
 <meta property="og:image" content="https://helonoia.com/logo.png">
 <meta property="og:image:width" content="1000">
 <meta property="og:image:height" content="1000">
@@ -42,8 +42,8 @@
       "url": "https://helonoia.com/",
       "logo": "https://helonoia.com/logo.png",
       "image": "https://helonoia.com/logo.png",
-      "slogan": "Menyapa duluan. Mengecek dua kali.",
-      "description": "Helonoia adalah merek baru dengan maskot monster ungu yang suka menyapa duluan. Saat ini kami membuat undangan digital, dan yang lain menyusul."
+      "slogan": "Monster ungu yang suka nyapa duluan.",
+      "description": "Helonoia adalah merek baru. Saat ini kami membuat undangan pernikahan digital dengan RSVP, ucapan, galeri, peta, dan amplop digital. Yang lain menyusul."
     }
   ]
 }
@@ -115,7 +115,7 @@ p{margin:0;text-wrap:pretty}
 .nav a:hover{color:var(--ink);background:rgba(178,107,255,.14)}
 @media (max-width:760px){.nav{display:none}}
 
-/* Wordmark: HELO putih, NOIA ungu – persis seperti di logo */
+/* Wordmark: HELO putih, NOIA ungu, persis seperti di logo */
 .w-helo{fill:var(--ink)}
 .w-noia{fill:var(--violet)}
 
@@ -142,8 +142,7 @@ p{margin:0;text-wrap:pretty}
 .hello{font-size:15px;font-weight:600;color:var(--lilac)}
 .hero h1{margin:26px 0 22px}
 .hero h1 svg{display:block;width:min(100%,600px);height:auto}
-.tagline{font:600 clamp(30px,4vw,48px)/1.08 var(--f-d);letter-spacing:-.01em}
-.tagline span{color:var(--violet)}
+.tagline{font:600 clamp(28px,3.4vw,42px)/1.12 var(--f-d);letter-spacing:-.01em;max-width:15em}
 .lead{margin:20px 0 32px;max-width:520px;color:var(--muted);font-size:clamp(16px,1.5vw,18px)}
 .hero-art{position:relative;width:100%;max-width:560px;justify-self:center}
 .hero-art::before{content:"";position:absolute;inset:14% 10% 10%;border-radius:50%;background:radial-gradient(closest-side,rgba(178,107,255,.34),rgba(178,107,255,0));pointer-events:none}
@@ -354,8 +353,8 @@ footer .meta p+p{margin-top:4px}
       <div class="hero-text">
         <p class="hello rv">Salam kenal, kami baru menetas.</p>
         <h1 class="rv d1"><span class="sr-only">Helonoia</span><svg viewBox="28 -703 5132 727" aria-hidden="true" focusable="false"><use href="#wm-paths"/></svg></h1>
-        <p class="tagline rv d2">Menyapa duluan.<br><span>Mengecek dua kali.</span></p>
-        <p class="lead rv d2">Helonoia adalah merek baru dengan maskot monster ungu bercakar besar yang selalu melirik curiga. Saat ini kami membuat undangan digital. Yang lain menyusul.</p>
+        <p class="tagline rv d2">Monster ungu yang suka nyapa duluan.</p>
+        <p class="lead rv d2">Helonoia adalah merek baru. Maskotnya bercakar besar dan selalu melirik curiga. Saat ini kami membuat undangan digital, yang lain menyusul.</p>
         <div class="btns rv d3">
           <a class="btn btn-primary" href="#nama">Kenalan dulu
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
@@ -368,7 +367,7 @@ footer .meta p+p{margin-top:4px}
       <div class="hero-art">
         <div class="mk-stage" id="mk-stage">
           <div class="mk-flash" aria-hidden="true"></div>
-          <p class="mk-bubble" aria-live="polite">Halo. Sudah kucek dua kali, kamu aman.</p>
+          <p class="mk-bubble" aria-live="polite">Halo. Sudah kucek, kamu aman.</p>
           <!-- Tiap lapisan maskot adalah elemen sendiri. Gambarnya cukup dilukis sekali, lalu GPU yang menggeser,
                membesarkan, dan memudarkannya. Kalau dianimasikan di dalam satu SVG, seluruh gambar dilukis ulang
                setiap frame dan animasinya tersendat di HP. -->
@@ -562,7 +561,7 @@ footer .meta p+p{margin-top:4px}
   <div class="wrap">
     <div>
       <svg class="wm" viewBox="28 -703 5132 727" role="img" aria-label="Helonoia"><use href="#wm-paths"/></svg>
-      <p class="tag">Menyapa duluan. Mengecek dua kali.</p>
+      <p class="tag">Monster ungu yang suka nyapa duluan.</p>
     </div>
     <div class="meta">
       <p>© 2026 Helonoia</p>
@@ -591,7 +590,7 @@ footer .meta p+p{margin-top:4px}
   });
 
   var LINES = [
-    "Halo. Sudah kucek dua kali, kamu aman.",
+    "Halo. Sudah kucek, kamu aman.",
     "Cakarku buat menangkap typo, bukan kamu.",
     "Aku belum punya nama. Ada ide?",
     "Tenang, mukaku memang begini sejak menetas.",
@@ -771,7 +770,7 @@ var KONTAK = { whatsapp: "", instagram: "", email: "" };
   var lines = [
     "Halo! …kamu siapa, ya?",
     "Oh, halo. Kamu dari mana?",
-    "Aku menyapa duluan. Aku juga memperhatikan.",
+    "Aku memang suka nyapa duluan.",
     "Tenang, cakarnya cuma buat gaya.",
     "Aku belum punya nama. Ada ide?",
     "Kamu lihat itu juga? …ah, bukan apa-apa.",
