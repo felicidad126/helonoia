@@ -33,7 +33,7 @@ Contoh di panduan ini (ganti dengan milikmu bila berbeda):
 ## Langkah 0: Siapkan (semua jalur)
 
 - **IP publik server**, misalnya `203.0.113.10`. Di panduan ini ditulis `IP-SERVER`.
-- **Akses ke pengaturan DNS domain**, yaitu tempat domain helonoia.com dikelola (kemungkinan Cloudflare, karena invitation.helonoia.com ada di Cloudflare Pages).
+- **Akses ke pengaturan DNS domain**, yaitu tempat domain helonoia.com dikelola. Saat ini helonoia.com memakai nameserver Cloudflare (`anita.ns.cloudflare.com` dan `ganz.ns.cloudflare.com`), jadi pengaturannya ada di dashboard Cloudflare.
 - **Untuk aaPanel:** sebaiknya server baru yang masih kosong, minimal 1 core CPU dan 512 MB RAM (disarankan 1 GB). Kalau akan dipakai untuk banyak website, ambil RAM lebih besar.
 
 ---
@@ -47,7 +47,7 @@ Di pengaturan DNS domain, buat (atau ubah) dua record ini:
 | `A` | `@` (artinya `helonoia.com`) | `IP-SERVER` |
 | `A` | `www` | `IP-SERVER` |
 
-> ⚠️ **Jangan ubah atau hapus record `invitation`.** Record itu yang menjalankan katalog undangan di invitation.helonoia.com.
+> ⚠️ **Ubah hanya dua record di atas.** Record lain di zona ini biarkan, terutama `MX` (email @helonoia.com di Lark). Katalog undangan saat ini berjalan di invitation.helonoia.net, yang DNS-nya terpisah, jadi tidak terpengaruh. Setelah katalog dipindah ke invitation.helonoia.com, zona ini akan punya record `invitation` yang juga tidak boleh diubah atau dihapus.
 
 Kalau DNS-nya di **Cloudflare**, set *Proxy status* kedua record di atas ke **DNS only** (awan abu-abu) dulu. Proxy bisa dinyalakan lagi setelah HTTPS berhasil dipasang.
 
@@ -357,7 +357,7 @@ sudo certbot renew --dry-run
 
 ## Jalur C: Shared hosting (cPanel)
 
-1. Arahkan domain ke hosting sesuai petunjuk penyedia (biasanya lewat *nameserver* atau record `A`). Jangan ubah record `invitation`.
+1. Arahkan domain ke hosting lewat record `A` (`@` dan `www` ke IP hosting, seperti di [Langkah 1](#langkah-1-arahkan-domain-ke-server-semua-jalur)). Jangan ganti *nameserver* helonoia.com ke milik hosting: semua record lain di Cloudflare ikut hilang, termasuk `MX` untuk email dan, setelah katalog pindah, record `invitation`.
 2. Buka **cPanel → File Manager → `public_html`** (atau folder milik domain itu).
 3. Unggah `index.html`, `maskot-helonoia.webp`, `favicon.png`, `logo.png`, `robots.txt`, dan `sitemap.xml` **langsung ke dalam** `public_html`, bukan ke subfolder `HTML`. Kalau sudah ada `index.html` atau `index.php` bawaan hosting, ganti atau hapus dulu.
 4. Pasang HTTPS di **cPanel → SSL/TLS Status → Run AutoSSL** (di beberapa hosting namanya menu "Let's Encrypt").
@@ -373,7 +373,7 @@ sudo certbot renew --dry-run
 - [ ] `https://helonoia.com/robots.txt` dan `https://helonoia.com/sitemap.xml` terbuka (bukan 404)
 - [ ] Maskot di bagian atas muncul lewat animasi perkenalan, lalu matanya mengikuti kursor
 - [ ] Tombol "Sapa balik" membuat maskot kaget sebentar dan menjawab
-- [ ] https://invitation.helonoia.com tetap membuka katalog undangan
+- [ ] https://invitation.helonoia.net tetap membuka katalog undangan (setelah katalog pindah domain: https://invitation.helonoia.com)
 
 ---
 
