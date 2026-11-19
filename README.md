@@ -6,6 +6,8 @@ Halaman perkenalan brand **Helonoia** beserta aset mereknya: maskot, logo, dan i
 | --- | --- |
 | [`HTML/`](HTML/) | Halaman brand (`index.html`, `maskot-helonoia.webp`, `favicon.png`, `logo.png`, `robots.txt`, `sitemap.xml`). Berdiri sendiri, tinggal disalin ke server. |
 | [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md) | Panduan deploy ke server sendiri (aaPanel, Nginx manual, cPanel). |
+| [`RENCANA-PINDAH-DOMAIN.md`](RENCANA-PINDAH-DOMAIN.md) | Rencana memindahkan katalog undangan dari invitation.helonoia.net ke invitation.helonoia.com. |
+| [`JADWAL-PINDAH-DOMAIN.md`](JADWAL-PINDAH-DOMAIN.md) | Jadwal pelaksanaan pindah domain per jam, dari H-7 sampai H+30, beserta skrip uji. |
 | [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) | Deploy otomatis `HTML/` ke server setiap push ke `main`. Cara menyiapkannya: [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md#update-otomatis-cicd). |
 | [`helonoia/`](helonoia/) | Gambar asli maskot (`helonoia_maskot.webp`), serta generator tulisan logo dan maskot versi lama (`helonoia_monster.py`) beserta hasilnya. |
 | [`helonoia/ikon/`](helonoia/ikon/) | Ikon untuk bagian "Empat kebiasaan kami". |
