@@ -47,7 +47,7 @@ Di pengaturan DNS domain, buat (atau ubah) dua record ini:
 | `A` | `@` (artinya `helonoia.com`) | `IP-SERVER` |
 | `A` | `www` | `IP-SERVER` |
 
-> ⚠️ **Ubah hanya dua record di atas.** Record lain di zona ini biarkan, terutama `MX` (email @helonoia.com di Lark). Katalog undangan saat ini berjalan di invitation.helonoia.net, yang DNS-nya terpisah, jadi tidak terpengaruh. Setelah katalog dipindah ke invitation.helonoia.com, zona ini akan punya record `invitation` yang juga tidak boleh diubah atau dihapus.
+> ⚠️ **Ubah hanya dua record di atas.** Record lain di zona ini biarkan, terutama `MX` (email @helonoia.com di Lark). Record `invitation` juga jangan diubah atau dihapus: record itu yang menjalankan katalog undangan di invitation.helonoia.com (Cloudflare Pages).
 
 Kalau DNS-nya di **Cloudflare**, set *Proxy status* kedua record di atas ke **DNS only** (awan abu-abu) dulu. Proxy bisa dinyalakan lagi setelah HTTPS berhasil dipasang.
 
@@ -357,7 +357,7 @@ sudo certbot renew --dry-run
 
 ## Jalur C: Shared hosting (cPanel)
 
-1. Arahkan domain ke hosting lewat record `A` (`@` dan `www` ke IP hosting, seperti di [Langkah 1](#langkah-1-arahkan-domain-ke-server-semua-jalur)). Jangan ganti *nameserver* helonoia.com ke milik hosting: semua record lain di Cloudflare ikut hilang, termasuk `MX` untuk email dan, setelah katalog pindah, record `invitation`.
+1. Arahkan domain ke hosting lewat record `A` (`@` dan `www` ke IP hosting, seperti di [Langkah 1](#langkah-1-arahkan-domain-ke-server-semua-jalur)). Jangan ganti *nameserver* helonoia.com ke milik hosting: semua record lain di Cloudflare ikut hilang, termasuk `MX` untuk email dan record `invitation` untuk katalog.
 2. Buka **cPanel → File Manager → `public_html`** (atau folder milik domain itu).
 3. Unggah `index.html`, `maskot-helonoia.webp`, `favicon.png`, `logo.png`, `robots.txt`, dan `sitemap.xml` **langsung ke dalam** `public_html`, bukan ke subfolder `HTML`. Kalau sudah ada `index.html` atau `index.php` bawaan hosting, ganti atau hapus dulu.
 4. Pasang HTTPS di **cPanel → SSL/TLS Status → Run AutoSSL** (di beberapa hosting namanya menu "Let's Encrypt").
@@ -373,7 +373,7 @@ sudo certbot renew --dry-run
 - [ ] `https://helonoia.com/robots.txt` dan `https://helonoia.com/sitemap.xml` terbuka (bukan 404)
 - [ ] Maskot di bagian atas muncul lewat animasi perkenalan, lalu matanya mengikuti kursor
 - [ ] Tombol "Sapa balik" membuat maskot kaget sebentar dan menjawab
-- [ ] https://invitation.helonoia.net tetap membuka katalog undangan (setelah katalog pindah domain: https://invitation.helonoia.com)
+- [ ] https://invitation.helonoia.com tetap membuka katalog undangan
 
 ---
 
@@ -510,7 +510,7 @@ Buka https://www.bing.com/webmasters, pilih **Import from Google Search Console*
 
 Google lebih cepat menemukan dan memercayai situs yang ditautkan dari tempat lain. Yang paling mudah:
 
-- **Katalog undangan** (invitation.helonoia.net): tambahkan tautan ke `https://helonoia.com/`, misalnya di footer ("Bagian dari Helonoia"). Sekarang katalog itu belum menautkan ke helonoia.com sama sekali.
+- **Katalog undangan** (invitation.helonoia.com): tambahkan tautan ke `https://helonoia.com/`, misalnya di footer ("Bagian dari Helonoia"). Sekarang katalog itu belum menautkan ke helonoia.com sama sekali.
 - **Bio Instagram, TikTok, dan WhatsApp Business**: isi kolom situs web dengan `https://helonoia.com`.
 - **Google Business Profile** (https://business.google.com), kalau Helonoia melayani pelanggan: nama "Helonoia" bisa muncul sebagai kotak informasi di sisi kanan hasil pencarian.
 

@@ -28,7 +28,7 @@ Halaman di folder [`HTML/`](HTML/) mengenalkan brand **Helonoia** sebelum ada pr
 - `canonical`, `og:url`, dan `og:image` mengarah ke `https://helonoia.com/`.
 - Untuk mesin pencari: judul `<h1>` berisi teks "Helonoia" (tersembunyi di balik logo SVG, kelas `sr-only`), data terstruktur JSON-LD (`WebSite` dan `Organization`) di `<head>`, serta `robots.txt` dan `sitemap.xml`. Begitu ada akun media sosial resmi, tambahkan tautannya sebagai `sameAs` di `Organization`. Pendaftaran ke Google Search Console ada di [`DEPLOY-HELONOIA.md`](DEPLOY-HELONOIA.md#supaya-muncul-di-google).
 - Kontak (WhatsApp, Instagram, email) diisi di objek `KONTAK` pada skrip di bagian bawah `HTML/index.html`. Selama kosong, tombol kontak tidak ditampilkan.
-- Bagian "Yang sudah bisa dilihat" menautkan ke katalog undangan digital di https://invitation.helonoia.net/.
+- Bagian "Yang sudah bisa dilihat" menautkan ke katalog undangan digital di https://invitation.helonoia.com/.
 - Font Fredoka (huruf logo) dan Plus Jakarta Sans dimuat dari Google Fonts, berlisensi SIL Open Font License 1.1.
 
 ## Maskot & logo
