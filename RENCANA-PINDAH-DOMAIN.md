@@ -23,22 +23,30 @@ Pelaksanaannya dipercepat dari jadwal di [`JADWAL-PINDAH-DOMAIN.md`](JADWAL-PIND
 | 20 November | Kartu katalog di helonoia.com dan `DEPLOY-HELONOIA.md` menautkan ke `.com` | felicidad126/helonoia#10 |
 | 20 November | `https://invitation.helonoia.com/sitemap.xml` dikirim ke Search Console. Statusnya "processed successfully", dengan 1 halaman ditemukan | – |
 | 20 November | DNS helonoia.net pindah dari NeoDNS ke Cloudflare (nameserver diganti di Biznet Gio). Zona menjadi Active, dan Redirect Rule "Pindah katalog ke .com" aktif | – |
+| 20 November | `helonoia.net` dan `www.helonoia.net`, yang sebelumnya error 530, kini dialihkan 301 ke `https://helonoia.com/` lewat record AAAA `@` → `100::` dan Redirect Rule kedua | – |
 
 **Hasil uji setelah redirect aktif:**
 
 - **Skrip uji A:** 22 dari 22 URL dialihkan 301 dalam satu lompatan ke pasangan `.com`-nya.
 - **Tidak ada pengalihan berulang.** `.com` melayani langsung dengan 200, dan alamat acak lewat `.net` berakhir di 404 Noi di `.com`.
 - **Nama tamu tetap tampil** di browser ponsel setelah dialihkan dari `.net`. Diuji pada `/?to=`, `/kaca-patri/?to=`, `/biru-kabut/?to=`, dan `/demo/?tema=truntum-terakota&to=`.
+- **`helonoia.net` dan `www.helonoia.net`**, lewat http maupun https dan dengan path apa pun, dialihkan 301 dalam satu lompatan ke `https://helonoia.com/`. Skrip uji A katalog tetap 22 dari 22 OK setelah rule kedua dipasang.
 
 **Konfigurasi akhir:**
 
-- **Zona helonoia.net di Cloudflare** memakai nameserver `anita` dan `ganz.ns.cloudflare.com`, dengan dua record:
+- **Zona helonoia.net di Cloudflare** memakai nameserver `anita` dan `ganz.ns.cloudflare.com`, dengan tiga record:
+  - `@`: AAAA → `100::`, Proxied. Alamat kosong yang hanya dipakai supaya lalu lintas lewat Cloudflare dan bisa dialihkan.
   - `invitation`: CNAME → `felicidad126-github-io.pages.dev`, Proxied.
   - `www`: CNAME → `helonoia.net`, Proxied.
+  - Sertifikat Universal untuk `helonoia.net` dan `*.helonoia.net` Active, dan diperpanjang otomatis oleh Cloudflare.
 - **Redirect Rule "Pindah katalog ke .com"** di zona helonoia.net:
   - Hostname equals `invitation.helonoia.net`.
   - Dynamic `concat("https://invitation.helonoia.com", http.request.uri.path)`.
   - Status 301, Preserve query string aktif.
+- **Redirect Rule "helonoia.net ke helonoia.com"** di zona yang sama:
+  - `(http.host in {"helonoia.net" "www.helonoia.net"})`.
+  - Static `https://helonoia.com/`, status 301, query string tidak dibawa.
+  - Kondisinya tidak mencakup `invitation.helonoia.net`, jadi kedua rule tidak saling bertabrakan.
 - **Custom domain di proyek Pages:** `invitation.helonoia.com` dan `invitation.helonoia.net`, keduanya Active. Yang `.net` harus tetap terpasang.
 - **Record lama di NeoDNS** sengaja dibiarkan sebagai jalur rollback.
 
@@ -56,7 +64,6 @@ Sebagai jalan terakhir, nameserver helonoia.net di Biznet Gio bisa dikembalikan 
 - Verifikasi `helonoia.net` di Search Console (record TXT di zona Cloudflare helonoia.net), lalu pakai Change of Address bila ditawarkan.
 - Ganti link `.net` di bio Instagram, template WhatsApp, dan profil bisnis. Ini tidak mendesak, karena link lama tetap dialihkan.
 - Putuskan nasib `/brand/` di katalog (lihat checklist SEO).
-- `helonoia.net` dan `www.helonoia.net` menampilkan error Cloudflare 530, karena `helonoia.net` tidak punya record A. Sebelum migrasi pun keduanya tidak membuka apa-apa. Bila diinginkan, keduanya bisa dialihkan ke `https://helonoia.com/` dengan satu record tambahan dan satu Redirect Rule.
 - Analytics belum terpasang di kedua situs.
 - Pantau sampai 20 Desember 2026: jalankan skrip uji A di `JADWAL-PINDAH-DOMAIN.md` sesekali, dan cek laporan halaman tidak ditemukan di Search Console.
 
