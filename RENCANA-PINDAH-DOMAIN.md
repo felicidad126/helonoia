@@ -5,8 +5,60 @@ Memindahkan katalog undangan dari `invitation.helonoia.net` ke `invitation.helon
 - **Untuk:** pemilik Helonoia
 - **Tanggal rencana:** 19 November 2026
 - **Diperbarui:** 19 November 2026, setelah dicocokkan dengan DNS publik, katalog live, dan repo `helonoia`. Opsi A dipilih, dan halaman 404 katalog sudah aktif.
-- **Jadwal pelaksanaan:** [`JADWAL-PINDAH-DOMAIN.md`](JADWAL-PINDAH-DOMAIN.md)
-- **Status:** Dokumen perencanaan. Tidak ada perubahan DNS, hosting, atau website yang dilakukan bersama dokumen ini.
+- **Jadwal awal:** [`JADWAL-PINDAH-DOMAIN.md`](JADWAL-PINDAH-DOMAIN.md). Tidak dipakai, karena migrasi dipercepat.
+- **Status:** **selesai pada 20 November 2026.** Lihat [Hasil pelaksanaan](#hasil-pelaksanaan). Bagian setelahnya adalah rencana asli, disimpan sebagai rujukan.
+
+## Hasil pelaksanaan
+
+Migrasi **selesai pada 20 November 2026**. Sejak itu `invitation.helonoia.net` dialihkan permanen (301) ke `invitation.helonoia.com`, dengan path dan query string yang sama.
+
+Pelaksanaannya dipercepat dari jadwal di [`JADWAL-PINDAH-DOMAIN.md`](JADWAL-PINDAH-DOMAIN.md), karena katalog belum punya pengguna. Akibatnya beberapa langkah jadwal tidak dipakai: penantian H-7, pembekuan perubahan, jam sepi, dan keputusan lanjut atau tunda sehari sebelumnya. Urutan pentingnya tetap dijaga: `.com` dipastikan jalan dengan HTTPS sebelum redirect dipasang.
+
+| Tanggal | Langkah | Rujukan |
+| --- | --- | --- |
+| 19 November | Halaman 404 Noi, `robots.txt`, dan `sitemap.xml` aktif di katalog | felicidad126/felicidad126.github.io#35 |
+| 19 November | `DEPLOY-HELONOIA.md` diperbaiki, lalu rencana dan jadwal ini disimpan di repo | felicidad126/helonoia#8, felicidad126/helonoia#9 |
+| 20 November | `invitation.helonoia.com` ditambahkan sebagai custom domain kedua di proyek Pages `felicidad126-github-io`. Ke-22 URL di skrip uji mengembalikan 200 dengan isi yang sama persis dengan `.net` | – |
+| 20 November | Canonical, `og:url`, `og:image`, `robots.txt`, dan `sitemap.xml` di katalog pindah ke `.com` | felicidad126/felicidad126.github.io#36 |
+| 20 November | Kartu katalog di helonoia.com dan `DEPLOY-HELONOIA.md` menautkan ke `.com` | felicidad126/helonoia#10 |
+| 20 November | `https://invitation.helonoia.com/sitemap.xml` dikirim ke Search Console. Statusnya "processed successfully", dengan 1 halaman ditemukan | – |
+| 20 November | DNS helonoia.net pindah dari NeoDNS ke Cloudflare (nameserver diganti di Biznet Gio). Zona menjadi Active, dan Redirect Rule "Pindah katalog ke .com" aktif | – |
+
+**Hasil uji setelah redirect aktif:**
+
+- **Skrip uji A:** 22 dari 22 URL dialihkan 301 dalam satu lompatan ke pasangan `.com`-nya.
+- **Tidak ada pengalihan berulang.** `.com` melayani langsung dengan 200, dan alamat acak lewat `.net` berakhir di 404 Noi di `.com`.
+- **Nama tamu tetap tampil** di browser ponsel setelah dialihkan dari `.net`. Diuji pada `/?to=`, `/kaca-patri/?to=`, `/biru-kabut/?to=`, dan `/demo/?tema=truntum-terakota&to=`.
+
+**Konfigurasi akhir:**
+
+- **Zona helonoia.net di Cloudflare** memakai nameserver `anita` dan `ganz.ns.cloudflare.com`, dengan dua record:
+  - `invitation`: CNAME → `felicidad126-github-io.pages.dev`, Proxied.
+  - `www`: CNAME → `helonoia.net`, Proxied.
+- **Redirect Rule "Pindah katalog ke .com"** di zona helonoia.net:
+  - Hostname equals `invitation.helonoia.net`.
+  - Dynamic `concat("https://invitation.helonoia.com", http.request.uri.path)`.
+  - Status 301, Preserve query string aktif.
+- **Custom domain di proyek Pages:** `invitation.helonoia.com` dan `invitation.helonoia.net`, keduanya Active. Yang `.net` harus tetap terpasang.
+- **Record lama di NeoDNS** sengaja dibiarkan sebagai jalur rollback.
+
+**Bila perlu rollback:**
+
+1. Matikan Redirect Rule di zona helonoia.net. Katalog `.net` langsung melayani lagi.
+2. Untuk canonical dan `og:`, kembalikan deployment Pages ke versi dari commit `884843c`, yaitu sebelum felicidad126/felicidad126.github.io#36.
+3. Untuk kartu katalog di helonoia.com, revert felicidad126/helonoia#10.
+
+Sebagai jalan terakhir, nameserver helonoia.net di Biznet Gio bisa dikembalikan ke `satu` dan `dua.neodns.id`.
+
+**Masih terbuka:**
+
+- Perpanjang helonoia.net minimal 12 bulan dan nyalakan perpanjangan otomatis.
+- Verifikasi `helonoia.net` di Search Console (record TXT di zona Cloudflare helonoia.net), lalu pakai Change of Address bila ditawarkan.
+- Ganti link `.net` di bio Instagram, template WhatsApp, dan profil bisnis. Ini tidak mendesak, karena link lama tetap dialihkan.
+- Putuskan nasib `/brand/` di katalog (lihat checklist SEO).
+- `helonoia.net` dan `www.helonoia.net` menampilkan error Cloudflare 530, karena `helonoia.net` tidak punya record A. Sebelum migrasi pun keduanya tidak membuka apa-apa. Bila diinginkan, keduanya bisa dialihkan ke `https://helonoia.com/` dengan satu record tambahan dan satu Redirect Rule.
+- Analytics belum terpasang di kedua situs.
+- Pantau sampai 20 Desember 2026: jalankan skrip uji A di `JADWAL-PINDAH-DOMAIN.md` sesekali, dan cek laporan halaman tidak ditemukan di Search Console.
 
 ## Yang berubah di versi ini
 
@@ -273,15 +325,15 @@ Situs bisa tampil sempurna di alamat baru sementara Google masih menunjuk ke ala
 
 ### Checklist SEO
 
-- [ ] `invitation.helonoia.com` tercakup di Search Console. Properti Domain `helonoia.com` sudah mencakupnya; bila properti itu belum ada, buat sekarang.
+- [x] `invitation.helonoia.com` tercakup di Search Console. Properti Domain `helonoia.com` sudah mencakupnya; bila properti itu belum ada, buat sekarang.
 - [ ] `helonoia.net` juga terverifikasi di Search Console, lewat record TXT di DNS helonoia.net (di NeoDNS, atau di Cloudflare bila memilih opsi A).
-- [ ] Sitemap `.com` dikirim. Sitemap `.net` dari pekerjaan pendahulu dibiarkan sampai Google berhenti mengambilnya.
-- [ ] Canonical di semua halaman menunjuk ke URL `.com`.
+- [x] Sitemap `.com` dikirim. Sitemap `.net` dari pekerjaan pendahulu dibiarkan sampai Google berhenti mengambilnya.
+- [x] Canonical di semua halaman menunjuk ke URL `.com`.
 - [ ] Fitur Change of Address di Search Console dipakai bila ditawarkan untuk pasangan properti ini. Bila tidak ditawarkan, redirect 301 dan sitemap sudah cukup.
-- [ ] Judul, deskripsi, dan Open Graph sama dengan versi lama, dengan `og:image` di alamat `.com`, agar pratinjau link di WhatsApp tidak berubah.
-- [ ] `robots.txt` di alamat baru tidak memblokir halaman katalog atau aset gambar.
+- [x] Judul, deskripsi, dan Open Graph sama dengan versi lama, dengan `og:image` di alamat `.com`, agar pratinjau link di WhatsApp tidak berubah.
+- [x] `robots.txt` di alamat baru tidak memblokir halaman katalog atau aset gambar.
 - [ ] Putuskan nasib `/brand/` di katalog. Halaman ini bisa diindeks, tidak punya canonical, dan isinya mirip helonoia.com, sehingga brand bersaing dengan dirinya sendiri di Google. Pilihannya: canonical ke `https://helonoia.com/`, atau teruskan langsung ke sana. Ini keputusan terpisah dan tidak menghalangi pindahan.
-- [ ] Salinan cadangan di `felicidad126.github.io` tidak bisa diberi redirect, tetapi tidak perlu: canonical di setiap halaman sudah menunjuk ke `.com`.
+- [x] Salinan cadangan di `felicidad126.github.io` tidak bisa diberi redirect, tetapi tidak perlu: canonical di setiap halaman sudah menunjuk ke `.com`.
 
 ### Checklist analytics
 
@@ -355,7 +407,7 @@ Dokumen ini adalah planning saja. Eksekusi baru bisa dijadwalkan setelah hal-hal
 ### Keputusan yang perlu diambil
 
 - **Cara redirect: diputuskan 19 November 2026, opsi A** (pindahkan DNS helonoia.net ke Cloudflare), karena redirect harus bertahan minimal 12 bulan dan tidak boleh ikut terhapus oleh deploy katalog.
-- **Tanggal hari-H** dan jam sepi yang dipilih, dengan memperhatikan acara pelanggan yang sedang berjalan. Syarat dan contoh tanggalnya ada di [`JADWAL-PINDAH-DOMAIN.md`](JADWAL-PINDAH-DOMAIN.md).
+- **Tanggal hari-H:** tidak diperlukan lagi. Migrasi dipercepat dan dilaksanakan 20 November 2026, karena katalog belum punya pengguna.
 - **Komitmen mempertahankan helonoia.net:** perpanjang minimal 12 bulan sejak go-live, idealnya selama masih ada acara pelanggan yang link-nya beredar.
 - **Analytics:** dipasang bersamaan dengan pindahan atau sesudahnya.
 - **Penyamaan header, footer, dan Noi di katalog:** dikerjakan langsung setelah pindah, atau ditunda sebagai proyek terpisah.
@@ -379,17 +431,17 @@ Cara berbagi akses yang aman:
 ## Checklist ringkas
 
 - [x] 404 Noi, `robots.txt`, dan `sitemap.xml` terpasang di `.net` dan teruji.
-- [ ] Inventaris URL, tempat link tersebar, dan akses: selesai dan tercatat.
-- [ ] ID deployment produksi Pages saat ini tercatat sebagai titik rollback.
-- [ ] (Opsi A) helonoia.net aktif di Cloudflare, dan katalog `.net` tetap terbuka normal.
-- [ ] `invitation.helonoia.com` terpasang sebagai custom domain Pages, dan HTTPS terbuka tanpa peringatan.
-- [ ] Beranda, 10 tema, demo, RSVP, galeri, peta, dan amplop teruji di ponsel di alamat `.com`.
-- [ ] Contoh link `/<tema>/?to=`, `/demo/?tema=…&to=…`, dan `/?to=` menampilkan nama tamu yang benar di `.com`.
-- [ ] Canonical, `og:url`, `og:image`, `robots.txt`, dan `sitemap.xml` menunjuk ke `.com`, dan sitemap `.com` terkirim ke Search Console.
-- [ ] Link di helonoia.com sudah menunjuk ke `invitation.helonoia.com`.
-- [ ] Redirect 301 `.net` ke `.com` aktif: satu lompatan, query string utuh, tanpa loop.
-- [ ] Seluruh daftar URL lama diuji ulang dari sisi `.net`.
+- [x] Inventaris URL dan akses. Tempat link `.net` tersebar belum dicatat; lihat "Masih terbuka".
+- [x] Titik rollback: deployment produksi Pages dari commit `884843c`, sebelum felicidad126/felicidad126.github.io#36.
+- [x] (Opsi A) helonoia.net aktif di Cloudflare, dan katalog `.net` tetap terbuka normal.
+- [x] `invitation.helonoia.com` terpasang sebagai custom domain Pages, dan HTTPS terbuka tanpa peringatan.
+- [x] Beranda, 10 tema, dan demo terbuka di `.com` dengan isi file yang sama persis dengan `.net`. RSVP, galeri, peta, dan amplop tidak diuji satu per satu.
+- [x] Contoh link `/<tema>/?to=`, `/demo/?tema=…&to=…`, dan `/?to=` menampilkan nama tamu yang benar di `.com`.
+- [x] Canonical, `og:url`, `og:image`, `robots.txt`, dan `sitemap.xml` menunjuk ke `.com`, dan sitemap `.com` terkirim ke Search Console.
+- [x] Link di helonoia.com sudah menunjuk ke `invitation.helonoia.com`.
+- [x] Redirect 301 `.net` ke `.com` aktif: satu lompatan, query string utuh, tanpa loop.
+- [x] Seluruh daftar URL lama diuji ulang dari sisi `.net`.
 - [ ] Domain `.net` diperpanjang dan perpanjangan otomatis aktif.
-- [ ] Pemantauan hari 1–3, minggu 1–2, dan tinjauan hari ke-30 terjadwal.
+- [ ] Pemantauan sampai 20 Desember 2026, lalu tinjauan hari ke-30.
 
-Jadwal hari-H per jam ada di [`JADWAL-PINDAH-DOMAIN.md`](JADWAL-PINDAH-DOMAIN.md). Begitu tanggal hari-H dipilih, yang diisi adalah jadwal itu, bukan rencana ini.
+Jadwal hari-H di [`JADWAL-PINDAH-DOMAIN.md`](JADWAL-PINDAH-DOMAIN.md) tidak dipakai, karena migrasi dipercepat. Skrip uji di dokumen itu tetap dipakai untuk pemantauan.

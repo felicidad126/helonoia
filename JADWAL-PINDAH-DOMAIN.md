@@ -6,6 +6,11 @@ Jadwal pelaksanaan untuk memindahkan katalog dari `invitation.helonoia.net` ke `
 - **Disusun:** 19 November 2026
 - **Cara redirect:** opsi A, diputuskan 19 November 2026. DNS helonoia.net dipindah ke Cloudflare, lalu redirect memakai Redirect Rule.
 - **Zona waktu:** semua jam dalam WIB.
+- **Status:** tidak dipakai. Lihat catatan di bawah.
+
+> **Jadwal ini tidak dipakai.** Katalog belum punya pengguna, jadi migrasi dipercepat dan selesai pada 20 November 2026 tanpa menunggu H-7. Urutan langkah dan hasil ujinya dicatat di [Rencana Pindah Domain, bagian Hasil pelaksanaan](RENCANA-PINDAH-DOMAIN.md#hasil-pelaksanaan).
+>
+> Yang masih dipakai: **Skrip uji** di bagian akhir dokumen ini, untuk pemantauan sampai 20 Desember 2026. Untuk rollback, pakai langkah di bagian Hasil pelaksanaan di rencana, bukan **Rollback cepat** di sini, karena bagian itu merujuk ke ID deployment dari langkah H-7 yang tidak dijalankan.
 
 ## Memilih tanggal hari-H
 
@@ -135,7 +140,7 @@ Dipakai bila keputusan akhir di hari-H atau batas rollback H+1 menyatakan rollba
 
 Jalankan dari terminal mana pun. Setiap baris mencetak `OK` atau `GAGAL` beserta alasannya.
 
-**Skrip uji A: redirect dari `.net`** (hari-H pukul 22.50, lalu H+1 s.d. H+3)
+**Skrip uji A: redirect dari `.net`** (dipakai untuk pemantauan; hasil 20 November 2026: 22 dari 22 OK)
 
 ```bash
 B=https://invitation.helonoia.net; N=https://invitation.helonoia.com
@@ -145,7 +150,7 @@ for p in "/" "/?to=Tes+Tamu" "/demo/?tema=biru-kabut&to=Tes%20Tamu" "/kaca-patri
 done
 ```
 
-**Skrip uji B: alamat `.com` terbuka** (H-1 pukul 09.00, lalu H+1)
+**Skrip uji B: alamat `.com` terbuka** (hasil 20 November 2026: 22 dari 22 OK, dan alamat acak 404)
 
 ```bash
 N=https://invitation.helonoia.com
