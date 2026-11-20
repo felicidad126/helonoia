@@ -60,8 +60,10 @@ Sebagai jalan terakhir, nameserver helonoia.net di Biznet Gio bisa dikembalikan 
 
 **Masih terbuka:**
 
-- Perpanjang helonoia.net minimal 12 bulan dan nyalakan perpanjangan otomatis.
-- Verifikasi `helonoia.net` di Search Console (record TXT di zona Cloudflare helonoia.net), lalu pakai Change of Address bila ditawarkan.
+- **helonoia.net tidak dipakai lagi** (diputuskan 20 November 2026). Masa berlakunya sampai **12 Mei 2027**, dan sampai saat itu semua pengalihan tetap jalan. Keputusan perpanjangan menyusul, sebelum tanggal itu:
+  - Bila diperpanjang, link lama tetap teralihkan dan nama brand tidak bisa dibeli orang lain.
+  - Bila dibiarkan kedaluwarsa, pengalihan berhenti dan domainnya bisa dibeli orang lain setelah masa tenggang registrar. Pastikan dulu tidak ada lagi link `.net` di bio, template WhatsApp, atau profil bisnis.
+- Verifikasi `helonoia.net` di Search Console (record TXT di zona Cloudflare helonoia.net), lalu pakai Change of Address bila ditawarkan. Ini opsional, karena hanya beranda katalog yang terindeks.
 - Ganti link `.net` di bio Instagram, template WhatsApp, dan profil bisnis. Ini tidak mendesak, karena link lama tetap dialihkan.
 - Putuskan nasib `/brand/` di katalog (lihat checklist SEO).
 - Analytics belum terpasang di kedua situs.
@@ -378,7 +380,7 @@ Baris terakhir adalah yang terpenting: link undangan yang sudah ada di ponsel pa
 | Konten ganda terindeks Google | Sedang | Selama pengujian canonical masih ke `.net` dan `.com` tidak ditautkan. Saat go-live: canonical `.com` + 301 |
 | Isian RSVP dan ucapan di `.net` tidak terlihat di `.com` | Rendah | Data itu tersimpan di browser tamu dan terikat ke domain. Wajar untuk demo; beri tahu pelanggan bila undangan mereka memakai cara yang sama |
 | Propagasi DNS lambat | Rendah | Record baru dibuat Cloudflare dengan TTL otomatis (5 menit). Pindah nameserver (opsi A) dikerjakan jauh sebelum hari-H |
-| Domain `.net` tidak diperpanjang | Tinggi | Perpanjang `.net` minimal 12 bulan dan aktifkan perpanjangan otomatis sebelum go-live |
+| Domain `.net` tidak diperpanjang | Tinggi | Perpanjang `.net` minimal 12 bulan dan aktifkan perpanjangan otomatis sebelum go-live. *Diperbarui 20 November 2026: `.net` tidak dipakai lagi dan berlaku sampai 12 Mei 2027. Lihat "Masih terbuka".* |
 
 ## Rencana rollback
 
@@ -415,7 +417,7 @@ Dokumen ini adalah planning saja. Eksekusi baru bisa dijadwalkan setelah hal-hal
 
 - **Cara redirect: diputuskan 19 November 2026, opsi A** (pindahkan DNS helonoia.net ke Cloudflare), karena redirect harus bertahan minimal 12 bulan dan tidak boleh ikut terhapus oleh deploy katalog.
 - **Tanggal hari-H:** tidak diperlukan lagi. Migrasi dipercepat dan dilaksanakan 20 November 2026, karena katalog belum punya pengguna.
-- **Komitmen mempertahankan helonoia.net:** perpanjang minimal 12 bulan sejak go-live, idealnya selama masih ada acara pelanggan yang link-nya beredar.
+- **Komitmen mempertahankan helonoia.net:** diputuskan 20 November 2026, helonoia.net tidak dipakai lagi. Domain ini berlaku sampai 12 Mei 2027, dan keputusan perpanjangannya menyusul sebelum tanggal itu.
 - **Analytics:** dipasang bersamaan dengan pindahan atau sesudahnya.
 - **Penyamaan header, footer, dan Noi di katalog:** dikerjakan langsung setelah pindah, atau ditunda sebagai proyek terpisah.
 
@@ -448,7 +450,7 @@ Cara berbagi akses yang aman:
 - [x] Link di helonoia.com sudah menunjuk ke `invitation.helonoia.com`.
 - [x] Redirect 301 `.net` ke `.com` aktif: satu lompatan, query string utuh, tanpa loop.
 - [x] Seluruh daftar URL lama diuji ulang dari sisi `.net`.
-- [ ] Domain `.net` diperpanjang dan perpanjangan otomatis aktif.
+- [ ] Keputusan perpanjangan helonoia.net sebelum 12 Mei 2027. Domain ini tidak dipakai lagi, dan pengalihan berjalan sampai masa berlakunya habis.
 - [ ] Pemantauan sampai 20 Desember 2026, lalu tinjauan hari ke-30.
 
 Jadwal hari-H di [`JADWAL-PINDAH-DOMAIN.md`](JADWAL-PINDAH-DOMAIN.md) tidak dipakai, karena migrasi dipercepat. Skrip uji di dokumen itu tetap dipakai untuk pemantauan.
