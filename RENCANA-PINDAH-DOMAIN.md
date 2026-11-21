@@ -60,7 +60,7 @@ Pelaksanaannya dipercepat dari jadwal di [`JADWAL-PINDAH-DOMAIN.md`](JADWAL-PIND
 
 Sebagai jalan terakhir, nameserver helonoia.net di Biznet Gio bisa dikembalikan ke `satu` dan `dua.neodns.id`.
 
-Bila server aaPanel bermasalah, katalog bisa dikembalikan ke Cloudflare Pages: ubah record `invitation` di zona helonoia.com menjadi CNAME `felicidad126-github-io.pages.dev` dengan proxy aktif. Di Pages tidak ada `/api/`, jadi undangan klien tetap tampil tetapi RSVP dan ucapannya tidak berfungsi.
+Bila server aaPanel bermasalah, katalog bisa dikembalikan ke Cloudflare Pages: ubah record `invitation` di zona helonoia.com menjadi CNAME `felicidad126-github-io.pages.dev` dengan proxy aktif, lalu di proyek Pages buka Custom domains dan klik **Reactivate** (atau **Check DNS records**) pada `invitation.helonoia.com`, yang sekarang berstatus Inactive. Di Pages tidak ada `/api/`, jadi undangan klien tetap tampil tetapi RSVP dan ucapannya tidak berfungsi.
 
 **Masih terbuka:**
 
@@ -71,7 +71,7 @@ Bila server aaPanel bermasalah, katalog bisa dikembalikan ke Cloudflare Pages: u
 - Ganti link `.net` di bio Instagram, template WhatsApp, dan profil bisnis. Ini tidak mendesak, karena link lama tetap dialihkan.
 - Putuskan nasib `/brand/` di katalog (lihat checklist SEO).
 - Analytics belum terpasang di kedua situs.
-- Rapikan custom domain `invitation.helonoia.com` di proyek Pages bila statusnya tidak Active lagi. Ini tidak memengaruhi situs.
+- Custom domain `invitation.helonoia.com` di proyek Pages berstatus Inactive (dicek 21 November 2026), karena DNS-nya sekarang ke server aaPanel. Biarkan saja: domain itu aktif lagi lewat Reactivate bila katalog dikembalikan ke Pages.
 - Pantau sampai 20 Desember 2026: jalankan skrip uji A di `JADWAL-PINDAH-DOMAIN.md` sesekali, dan cek laporan halaman tidak ditemukan di Search Console.
 
 ## Yang berubah di versi ini
