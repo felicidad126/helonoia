@@ -24,6 +24,7 @@ Pelaksanaannya dipercepat dari jadwal di [`JADWAL-PINDAH-DOMAIN.md`](JADWAL-PIND
 | 20 November | `https://invitation.helonoia.com/sitemap.xml` dikirim ke Search Console. Statusnya "processed successfully", dengan 1 halaman ditemukan | – |
 | 20 November | DNS helonoia.net pindah dari NeoDNS ke Cloudflare (nameserver diganti di Biznet Gio). Zona menjadi Active, dan Redirect Rule "Pindah katalog ke .com" aktif | – |
 | 20 November | `helonoia.net` dan `www.helonoia.net`, yang sebelumnya error 530, kini dialihkan 301 ke `https://helonoia.com/` lewat record AAAA `@` → `100::` dan Redirect Rule kedua | – |
+| 20–21 November | Di luar rencana ini, `invitation.helonoia.com` dipindah dari Cloudflare Pages ke server aaPanel yang sama dengan helonoia.com, supaya API RSVP dan ucapan bisa berjalan di `/api/` pada domain yang sama. Isi situs tidak berubah | README repo felicidad126/felicidad126.github.io, bagian Hosting |
 
 **Hasil uji setelah redirect aktif:**
 
@@ -47,16 +48,19 @@ Pelaksanaannya dipercepat dari jadwal di [`JADWAL-PINDAH-DOMAIN.md`](JADWAL-PIND
   - `(http.host in {"helonoia.net" "www.helonoia.net"})`.
   - Static `https://helonoia.com/`, status 301, query string tidak dibawa.
   - Kondisinya tidak mencakup `invitation.helonoia.net`, jadi kedua rule tidak saling bertabrakan.
-- **Custom domain di proyek Pages:** `invitation.helonoia.com` dan `invitation.helonoia.net`, keduanya Active. Yang `.net` harus tetap terpasang.
+- **Hosting katalog:** sejak 20–21 November, `invitation.helonoia.com` dilayani nginx di server aaPanel yang sama dengan helonoia.com. Record `invitation` di zona helonoia.com berupa A record ke server itu (DNS only), dan sertifikatnya Let's Encrypt dari aaPanel. Server menarik isi `main` repo katalog setiap 5 menit. Dicek 21 November 2026: ke-22 URL katalog di server berisi sama persis dengan salinan Pages, dan folder `.git` tidak terbuka ke publik.
+- **Proyek Pages `felicidad126-github-io`** tetap tersambung ke repo dan menjadi cadangan di `felicidad126-github-io.pages.dev`. Custom domain `invitation.helonoia.net` di proyek itu biarkan terpasang. Custom domain `invitation.helonoia.com` di sana tidak lagi melayani lalu lintas.
 - **Record lama di NeoDNS** sengaja dibiarkan sebagai jalur rollback.
 
 **Bila perlu rollback:**
 
 1. Matikan Redirect Rule di zona helonoia.net. Katalog `.net` langsung melayani lagi.
-2. Untuk canonical dan `og:`, kembalikan deployment Pages ke versi dari commit `884843c`, yaitu sebelum felicidad126/felicidad126.github.io#36.
+2. Untuk canonical dan `og:`, revert felicidad126/felicidad126.github.io#36 di `main` repo katalog. Server menarik perubahan itu dalam 5 menit, dan Pages ikut memperbarui salinan cadangannya.
 3. Untuk kartu katalog di helonoia.com, revert felicidad126/helonoia#10.
 
 Sebagai jalan terakhir, nameserver helonoia.net di Biznet Gio bisa dikembalikan ke `satu` dan `dua.neodns.id`.
+
+Bila server aaPanel bermasalah, katalog bisa dikembalikan ke Cloudflare Pages: ubah record `invitation` di zona helonoia.com menjadi CNAME `felicidad126-github-io.pages.dev` dengan proxy aktif, lalu di proyek Pages buka Custom domains dan klik **Reactivate** (atau **Check DNS records**) pada `invitation.helonoia.com`, yang sekarang berstatus Inactive. Di Pages tidak ada `/api/`, jadi undangan klien tetap tampil tetapi RSVP dan ucapannya tidak berfungsi.
 
 **Masih terbuka:**
 
@@ -67,6 +71,7 @@ Sebagai jalan terakhir, nameserver helonoia.net di Biznet Gio bisa dikembalikan 
 - Ganti link `.net` di bio Instagram, template WhatsApp, dan profil bisnis. Ini tidak mendesak, karena link lama tetap dialihkan.
 - Putuskan nasib `/brand/` di katalog (lihat checklist SEO).
 - Analytics belum terpasang di kedua situs.
+- Custom domain `invitation.helonoia.com` di proyek Pages berstatus Inactive (dicek 21 November 2026), karena DNS-nya sekarang ke server aaPanel. Biarkan saja: domain itu aktif lagi lewat Reactivate bila katalog dikembalikan ke Pages.
 - Pantau sampai 20 Desember 2026: jalankan skrip uji A di `JADWAL-PINDAH-DOMAIN.md` sesekali, dan cek laporan halaman tidak ditemukan di Search Console.
 
 ## Yang berubah di versi ini
