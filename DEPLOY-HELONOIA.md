@@ -47,7 +47,7 @@ Di pengaturan DNS domain, buat (atau ubah) dua record ini:
 | `A` | `@` (artinya `helonoia.com`) | `IP-SERVER` |
 | `A` | `www` | `IP-SERVER` |
 
-> ⚠️ **Ubah hanya dua record di atas.** Record lain di zona ini biarkan, terutama `MX` (email @helonoia.com di Lark). Record `invitation` juga jangan diubah atau dihapus: record itu yang menjalankan katalog undangan di invitation.helonoia.com (Cloudflare Pages).
+> ⚠️ **Ubah hanya dua record di atas.** Record lain di zona ini biarkan, terutama `MX` (email @helonoia.com di Lark). Record `invitation` juga jangan dihapus. Katalog undangan di invitation.helonoia.com kini berjalan di server yang sama (situs aaPanel `invitation.helonoia.com`), jadi record itu juga berupa A record ke `IP-SERVER`. Jangan hapus situs itu di aaPanel. Bila pindah server, ubah juga record `invitation` ke IP baru dan pindahkan situs katalog beserta API-nya; caranya ada di README repo felicidad126/felicidad126.github.io, bagian Hosting.
 
 Kalau DNS-nya di **Cloudflare**, set *Proxy status* kedua record di atas ke **DNS only** (awan abu-abu) dulu. Proxy bisa dinyalakan lagi setelah HTTPS berhasil dipasang.
 
